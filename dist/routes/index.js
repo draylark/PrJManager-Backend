@@ -1,0 +1,35 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.extensionRouter = exports.likesRouter = exports.friendsRouter = exports.searcherRouter = exports.commentsRouter = exports.gitlabRouter = exports.reposRouter = exports.eventRouter = exports.clientRouter = exports.notisRouter = exports.tasksRouter = exports.proyectsRouter = exports.usersRouter = exports.authRouter = void 0;
+var authsR_1 = require("./authsR");
+Object.defineProperty(exports, "authRouter", { enumerable: true, get: function () { return __importDefault(authsR_1).default; } });
+var usersR_1 = require("./usersR");
+Object.defineProperty(exports, "usersRouter", { enumerable: true, get: function () { return __importDefault(usersR_1).default; } });
+var projectsR_1 = require("./projectsR");
+Object.defineProperty(exports, "proyectsRouter", { enumerable: true, get: function () { return __importDefault(projectsR_1).default; } });
+var tasksR_1 = require("./tasksR");
+Object.defineProperty(exports, "tasksRouter", { enumerable: true, get: function () { return __importDefault(tasksR_1).default; } });
+var notisR_1 = require("./notisR");
+Object.defineProperty(exports, "notisRouter", { enumerable: true, get: function () { return __importDefault(notisR_1).default; } });
+var clientR_1 = require("./clientR");
+Object.defineProperty(exports, "clientRouter", { enumerable: true, get: function () { return __importDefault(clientR_1).default; } });
+var eventsR_1 = require("./eventsR");
+Object.defineProperty(exports, "eventRouter", { enumerable: true, get: function () { return __importDefault(eventsR_1).default; } });
+var reposR_1 = require("./reposR");
+Object.defineProperty(exports, "reposRouter", { enumerable: true, get: function () { return __importDefault(reposR_1).default; } });
+var gitlabR_1 = require("./gitlabR");
+Object.defineProperty(exports, "gitlabRouter", { enumerable: true, get: function () { return __importDefault(gitlabR_1).default; } });
+var commentsR_1 = require("./commentsR");
+Object.defineProperty(exports, "commentsRouter", { enumerable: true, get: function () { return __importDefault(commentsR_1).default; } });
+var searcherR_1 = require("./searcherR");
+Object.defineProperty(exports, "searcherRouter", { enumerable: true, get: function () { return __importDefault(searcherR_1).default; } });
+var friendsR_1 = require("./friendsR");
+Object.defineProperty(exports, "friendsRouter", { enumerable: true, get: function () { return __importDefault(friendsR_1).default; } });
+var likesR_1 = require("./likesR");
+Object.defineProperty(exports, "likesRouter", { enumerable: true, get: function () { return __importDefault(likesR_1).default; } });
+var extensionR_1 = require("./extensionR");
+Object.defineProperty(exports, "extensionRouter", { enumerable: true, get: function () { return __importDefault(extensionR_1).default; } });
+//# sourceMappingURL=index.js.map

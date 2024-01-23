@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=, initial-scale=1.0">
+    <title>jajaj, no</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io();
+        document.addEventListener('DOMContentLoaded', () => {
+            socket.on('connect', () => {
+                console.log('Conectado al servidor Socket.IO');
+            });        
+        });
+        const idk = async(id) => {
+            // const response = await fetch('http://localhost:3000/api/extension/login', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json'
+            //     },
+            //     body: JSON.stringify({id})
+            // });
+        
+        
+            socket.emit('message', {id});
+        
+        }
+
+        socket.on('message', (data) => {
+            console.log(data);
+        });
+    </script>
+</head>
+<body>
+    <h1>jajaja no</h1>
+    <button onclick="idk('123456')">hola</button>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+</body>
+</html>
