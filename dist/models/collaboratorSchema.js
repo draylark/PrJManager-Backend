@@ -2,21 +2,59 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const collaboratorSchema = new mongoose_1.Schema({
+    project: {
+        _id: {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Project',
+        },
+        accessLevel: {
+            type: String,
+            enum: ['contributor', 'coordinator', 'manager', 'administrator'],
+        }
+    },
+    layer: {
+        _id: {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Layer',
+        },
+        accessLevel: {
+            type: String,
+            enum: ['contributor', 'coordinator', 'manager', 'administrator'],
+        }
+    },
     repository: {
+        _id: {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Repo',
+        },
+        accessLevel: {
+            type: String,
+            enum: ['reader', 'editor', 'manager', 'administrator'],
+        }
+    },
+    projectID: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Repo',
+        ref: 'Project',
         required: true
     },
-    user: {
+    uid: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    accessLevel: {
+    name: {
         type: String,
-        enum: ['Editor', 'Reader', 'Admin', 'Owner'],
-        required: true
-    }
+        default: null
+    },
+    photoUrl: {
+        type: String,
+        default: null
+    },
+    state: {
+        type: Boolean,
+        default: true
+    },
 });
-exports.default = (0, mongoose_1.model)('Collaborator', collaboratorSchema);
+const Collaborator = (0, mongoose_1.model)('Collaborator', collaboratorSchema);
+exports.default = Collaborator;
 //# sourceMappingURL=collaboratorSchema.js.map

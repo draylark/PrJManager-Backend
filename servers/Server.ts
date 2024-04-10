@@ -4,9 +4,10 @@ import dbConnection from '../db/connection'
 import { authRouter, usersRouter, proyectsRouter, tasksRouter,
      notisRouter, clientRouter, eventRouter, reposRouter, gitlabRouter, 
      commentsRouter, searcherRouter, friendsRouter, likesRouter, 
-     extensionRouter 
+     extensionRouter, layersRouter, commitsRouter 
 } from '../routes'
 import cookieParse  from 'cookie-parser'
+import useragent from "express-useragent"
 
 interface Paths {
     auth: string,
@@ -23,6 +24,8 @@ interface Paths {
     friends: string,
     likes: string,
     extension: string
+    layer: string,
+    commits: string
 }
 
 // https://localhost:3000/api/auth/login
@@ -49,7 +52,9 @@ class Server {
             searcher: '/api/searcher',
             friends: '/api/friends',
             likes: '/api/likes',
-            extension: '/api/extension'
+            extension: '/api/extension',
+            layer: '/api/layer',
+            commits: '/api/commits'
         }
         
         this.conectarDB()
@@ -71,6 +76,7 @@ class Server {
         this.app.use( express.json() )
         this.app.use( cookieParse() )
         this.app.use( express.static('public'))
+        this.app.use(useragent.express());
     }
 
 
@@ -96,6 +102,8 @@ class Server {
         this.app.use( this.paths.friends, friendsRouter)
         this.app.use( this.paths.likes, likesRouter)
         this.app.use( this.paths.extension, extensionRouter)
+        this.app.use( this.paths.layer, layersRouter)
+        this.app.use( this.paths.commits, commitsRouter)
         
 
     }

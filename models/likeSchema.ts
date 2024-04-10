@@ -1,19 +1,18 @@
 import { Schema, model } from "mongoose";
 
 const likeSchema = new Schema({
-    commentId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Comment',
-        required: true
-    },
     uid: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    type: {
-        type: String,
-        enum: ['like', 'dislike'],
+    commentId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Comment',
+        required: true
+    },
+    isLike: {
+        type: Boolean,
         required: true
     }
 }, { timestamps: true });

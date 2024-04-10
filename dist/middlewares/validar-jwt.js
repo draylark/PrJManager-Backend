@@ -34,7 +34,7 @@ const validarJWT = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
         const response = jsonwebtoken_1.default.verify(token, process.env.SECRETORPRIVATEKEY);
         const user = yield userSchema_1.default.findById(response.uid);
         // console.log(response)
-        console.log(user);
+        // console.log(user)
         // ! verificar que el user exista
         if (!user)
             return res.status(401).json({

@@ -26,6 +26,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const likesController = __importStar(require("../controllers/likes"));
 const router = (0, express_1.Router)();
-router.post('/', likesController.likes);
+router.post('/:commentId', likesController.newLike);
+router.put('/:commentId', likesController.updateLike);
+router.get('/:commentId/:uid', likesController.getLikes);
 exports.default = router;
 //# sourceMappingURL=likesR.js.map

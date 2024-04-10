@@ -1,9 +1,8 @@
 
 import { model, Schema } from 'mongoose';
 
-
-
 const ProjectSchema = new Schema({
+
     name: {
       type: String,
       required: true,
@@ -13,6 +12,8 @@ const ProjectSchema = new Schema({
       type: String,
       required: true
     },
+
+
     startDate: {
       type: Date,
       default: Date.now
@@ -20,69 +21,69 @@ const ProjectSchema = new Schema({
     endDate: {
       type: Date
     },
-    status: {
-      type: String,
-      enum: [],
-      default: 'In Progress'
-    },
-    members: [{
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    }],
-    layers: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Group'
-    }],
-    repos: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Repo'
-    }],
-    tasks: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Task'
-    }],
-    progress: [{
-      timestamp: {
-        type: Date,
-        default: Date.now
-      },
-      tasksCompleted: {
-        type: Number,
-        default: 0
-      }
-    }],
     lastUpdated: {
       type: Date,
       default: Date.now
     },
-    owner: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+
+
+    status: {
+      type: String,
+      enum: [ 'In Progress', 'Completed', 'On Hold', 'Cancelled' ],
+      default: 'In Progress'
     },
     priority: {
       type: String,
       enum: ['High', 'Medium', 'Low'],
       default: 'Medium'
     },
+    visibility: {
+      type: String,
+      enum: ['public', 'private'],
+      default: 'public'
+    },
+
     tags: [String],
-    changeLogs: [{
-      message: String,
-      date: {
-        type: Date,
-        default: Date.now
-      }
-    }],
-    attachments: [String],
-    comments: [{
+
+
+    collaborators: {
+      type: Number,
+      default: 0
+    },
+    layers: {
+      type: Number,
+      default: 0
+    },
+    repositories: {
+      type: Number,
+      default: 0   
+    },
+    commits: {
+      type: Number,
+      default: 0
+    },
+    completedTasks: {
+      type: Number,
+      default: 0
+    },
+    tasks: {
+      type: Number,
+      default: 0
+    },
+
+    
+    advancedSettings: {
+
+    },
+
+    owner: {
       type: Schema.Types.ObjectId,
-      ref: 'Comment'
-    }],
-    clients: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Client'
-    }]
-  });
+      ref: 'User',
+      required: true
+    },
+
+  }, { timestamps: true });
+
 
 
 ProjectSchema.methods.toJSON = function(){
@@ -92,4 +93,5 @@ ProjectSchema.methods.toJSON = function(){
 }
 
 
-export default model('Project', ProjectSchema)
+const Project = model('Project', ProjectSchema)
+export default Project;

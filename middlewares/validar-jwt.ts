@@ -37,7 +37,7 @@ const validarJWT = async( req: Request, res: Response, next: NextFunction ) => {
 
 
         // console.log(response)
-        console.log(user)
+        // console.log(user)
 
          // ! verificar que el user exista
          if( !user ) return res.status(401).json({

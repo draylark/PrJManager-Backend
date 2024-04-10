@@ -2,6 +2,11 @@ import { Schema, model } from "mongoose";
 
 
 const NotisSchema = new Schema({
+    type: {
+      type: String,
+      enum: ['task-assignation', 'friend-request', 'project-invitation', 'new-repo', 'new-layer', 'new-commit'],
+      required: true
+    },
     title: {
       type: String,
       required: true
@@ -14,15 +19,28 @@ const NotisSchema = new Schema({
       type: Boolean,
       default: true
     },
-    to: {
+    recipient: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true
     },
-    by: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+    from: {
+      name: {
+        type: String,
+        required: true
+      },
+      ID: {
+        type: Schema.Types.ObjectId,
+        required: true
+      },
+      photoUrl: {
+        type: String,
+        default: null
+      }
+    },
+    additionalData: {
+      type: Schema.Types.Mixed,
+      default: null
     }
   }, {
     timestamps: true
@@ -30,5 +48,4 @@ const NotisSchema = new Schema({
 
 
 const Noti = model('Notis', NotisSchema);
-
 export default Noti;

@@ -23,28 +23,62 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUsers = exports.putUsers = exports.getUsersById = exports.getUsers = void 0;
+exports.deleteUsers = exports.putUsers = exports.getUsersById = exports.getUsers = exports.findUsers = void 0;
 const userSchema_1 = __importDefault(require("../models/userSchema"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const findUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const search = req.query.search;
+    try {
+        let queryConditions = [{ username: { $regex: search, $options: 'i' } }];
+        // Intentar agregar la condición de búsqueda por ID si 'search' es un ID válido
+        if (search.match(/^[0-9a-fA-F]{24}$/)) {
+            queryConditions.push({ _id: search });
+        }
+        const users = yield userSchema_1.default.find({ $or: queryConditions });
+        // Asumiendo que quieres enviar los usuarios encontrados como respuesta
+        res.json({
+            users
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            msg: 'Error al buscar usuarios'
+        });
+    }
+});
+exports.findUsers = findUsers;
 const getUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { limit = 5, from = 0 } = req.query;
-    const [total, users] = yield Promise.all([
-        userSchema_1.default.countDocuments({ state: true }),
-        userSchema_1.default.find({ state: true })
-            .skip(from)
-            .limit(limit)
-    ]);
-    res.json({
-        msg: 'get API - c',
-        total,
-        users
-    });
+    const { limit = 4, from = 0 } = req.query;
+    const { IDS } = req.body; // Asume que 'IDS' es un arreglo de IDs de usuario
+    try {
+        const users = yield userSchema_1.default.find({
+            '_id': { $in: IDS },
+            'state': true // Asumiendo que quieres seguir filtrando por el estado si es necesario
+        })
+            .skip(Number(from)) // Asegúrate de convertir 'from' y 'limit' a números
+            .limit(Number(limit))
+            .select('photoUrl _id username'); // Solo incluye 'photoUrl', '_id', y 'username'
+        // Como el total específico de usuarios devueltos ya está definido por la longitud de 'users', no es necesario contarlos por separado
+        const total = users.length;
+        res.json({
+            msg: 'get API - controller modified',
+            total,
+            users
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            msg: 'Error al obtener los usuarios'
+        });
+    }
 });
 exports.getUsers = getUsers;
 const getUsersById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
-        const user = yield userSchema_1.default.findOne({ _id: id, state: true });
+        const user = yield userSchema_1.default.findOne({ _id: id });
         if (!user)
             return res.status(400).json({
                 msg: 'User not found'
@@ -55,7 +89,7 @@ const getUsersById = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
     catch (error) {
         return res.status(500).json({
-            msg: 'Internal server Error'
+            msg: 'Internal server Error1'
         });
     }
 });
@@ -75,7 +109,7 @@ const putUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
     catch (error) {
         return res.status(500).json({
-            msg: 'Internal server Error',
+            msg: 'Internal server Error2',
             error
         });
     }

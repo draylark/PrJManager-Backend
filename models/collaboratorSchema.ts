@@ -2,22 +2,61 @@ import { Schema, model } from 'mongoose';
 
 
 const collaboratorSchema = new Schema({
+    project: {
+        _id: {
+            type: Schema.Types.ObjectId,
+            ref: 'Project',
+        },
+        accessLevel: {
+            type: String,
+            enum: ['contributor', 'coordinator', 'manager', 'administrator'],
+        }
+    },
+    layer: {
+        _id: {
+            type: Schema.Types.ObjectId,
+            ref: 'Layer',
+        },
+        accessLevel: {
+            type: String,
+            enum: ['contributor', 'coordinator', 'manager', 'administrator'],
+        }
+    },
     repository: {
+        _id: {
+            type: Schema.Types.ObjectId,
+            ref: 'Repo',
+        },
+        accessLevel: {
+            type: String,
+            enum: ['reader', 'editor', 'manager', 'administrator'],
+        }
+    },
+    projectID: {
         type: Schema.Types.ObjectId,
-        ref: 'Repo', // Asegúrate de que este nombre coincida con el modelo de tu repositorio
+        ref: 'Project',
         required: true
     },
-    user: {
+    uid: {
         type: Schema.Types.ObjectId,
-        ref: 'User', // Asegúrate de que este nombre coincida con el modelo de tu usuario
+        ref: 'User',
         required: true
     },
-    accessLevel: {
+    name: {
         type: String,
-        enum: ['Editor', 'Reader', 'Admin', 'Owner'],
-        required: true
-    }
+        default: null
+    },
+    photoUrl: {
+        type: String,
+        default: null
+    },
+    state: {
+        type: Boolean,
+        default: true
+    },
 });
 
-export default model('Collaborator', collaboratorSchema);
 
+const Collaborator =  model('Collaborator', collaboratorSchema);
+
+export default Collaborator;

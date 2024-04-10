@@ -1,18 +1,75 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const repos_1 = require("../controllers/repos");
+const repoController = __importStar(require("../controllers/repos"));
+const validateJWT_1 = require("../middlewares/validateJWT");
+const layer_middlewares_1 = require("../middlewares/layer-middlewares");
+const project_middlewares_1 = require("../middlewares/project-middlewares");
+const collaborators_middlewares_1 = require("../middlewares/collaborators-middlewares");
+const repository_middlewares_1 = require("../middlewares/repository-middlewares");
 const router = (0, express_1.Router)();
 // CRUD routes
-router.post('/', repos_1.createRepository);
-router.get('/', repos_1.getRepositories);
-router.get('/:id', repos_1.getRepositoryById);
-router.put('/:id', repos_1.updateRepository);
-router.delete('/:id', repos_1.deleteRepository);
+router.post('/', [
+    validateJWT_1.validateJWT,
+    project_middlewares_1.validateProjectExistance,
+    layer_middlewares_1.validateLayerExistance,
+    repository_middlewares_1.createRepoOnGitlab,
+    repository_middlewares_1.createRepoOnMongoDB,
+    collaborators_middlewares_1.addNewRepoCollaborators,
+], repoController.createRepository);
+router.get('/', repoController.getRepositories);
+router.get('/:id', repoController.getRepositoryById);
+router.put('/:id', repoController.updateRepository);
+router.delete('/:id', repoController.deleteRepository);
 // Get all repositories by user ID
-router.get('/getAllRepos/:userId', repos_1.getRepositoriesByUserId);
-router.get('/getCollaborators/:repoId', repos_1.getRepoCollaborators);
-router.post('/updateRepos', repos_1.updateRepos);
+router.get('/getAllRepos/:userId', repoController.getRepositoriesByUserId);
+router.get('/get-repo-collaborators/:repoId', repoController.getRepoCollaborators);
+router.post('/updateRepos', repoController.updateRepos);
+router.post('/add-repo-collaborator/:projectId', [
+    validateJWT_1.validateJWT,
+    // showRole('manager', 'administrator'),
+    // validarCampos 
+], repoController.addRepoCollaborator);
+router.put('/update-repository/:projectID/:layerID/:repoID', [
+    validateJWT_1.validateJWT,
+    project_middlewares_1.validateProjectExistance,
+    layer_middlewares_1.validateLayerExistance,
+    repository_middlewares_1.validateRepositoryExistance,
+    (0, repository_middlewares_1.validateCollaboratorAccessOnRepository)(['administrator']),
+    repository_middlewares_1.deleteCollaborators,
+    repository_middlewares_1.updateRepoCollaborators,
+    repository_middlewares_1.verifyTwoAccessLevelOfNewCollaborator,
+    repository_middlewares_1.newCollaborators
+], repoController.updateRepository);
+router.get('/get-repos/:projectID', [
+    validateJWT_1.validateJWT,
+    project_middlewares_1.validateProjectExistance,
+    project_middlewares_1.validateUserAccessOnProject,
+    repository_middlewares_1.getProjectReposDataBaseOnAccess
+], repoController.getReposByProject);
 // Donde se encontraba antes: 
 // router.get('/getAllRepos/:userId', getRepositoriesByUserId);
 exports.default = router;

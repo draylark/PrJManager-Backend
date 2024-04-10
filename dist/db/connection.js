@@ -23,8 +23,8 @@ const dbConnection = () => __awaiter(void 0, void 0, void 0, function* () {
         console.log('Base de datos inicializada');
     }
     catch (error) {
-        console.log(error);
-        throw new Error('Error al iniciar la DB');
+        console.warn('Theres been an error while initializing the DB.');
+        console.error(error);
     }
 });
 exports.default = dbConnection;

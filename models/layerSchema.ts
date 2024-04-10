@@ -16,12 +16,7 @@ const LayerSchema = new Schema({
     },
     visibility: {
         type: String,
-        enum: ['public', 'private', 'internal'],
-        required: true
-    },
-    owner: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
+        enum: [ 'open', 'internal', 'restricted' ],
         required: true
     },
     project: {
@@ -32,20 +27,21 @@ const LayerSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Repo'
     }],
-    collaborators: [{
-        user: {
-            type: Schema.Types.ObjectId,
-            ref: 'User'
-        },
-        accessLevel: {
-            type: Number,
-            required: true
-        }
-    }],
     gitlabId: {
         type: Number,
         required: true
-    }
+    },
+    status: {
+        type: Boolean,
+        default: true
+    },
+    creator: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
 });
 
-export default model('Layer', LayerSchema);
+const Layer = model('Layer', LayerSchema);
+
+export default Layer;

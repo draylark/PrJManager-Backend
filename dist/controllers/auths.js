@@ -12,13 +12,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extensionAuthUser = exports.extensionStartOAuth = exports.extensionController = exports.me = exports.usersPostLogin = exports.usersPostRegistration = exports.googlePostLogin = exports.googleSignIn = exports.googlePostRegistration = void 0;
+exports.registerNewSession = exports.createToken = exports.extensionAuthUser = exports.extensionStartOAuth = exports.extensionController = exports.me = exports.usersPostLogin = exports.usersPostRegistration = exports.googlePostLogin = exports.googleSignIn = exports.googlePostRegistration = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const userSchema_1 = __importDefault(require("../models/userSchema"));
 const generarJWT_1 = __importDefault(require("../helpers/generarJWT"));
 const google_auth_library_1 = require("google-auth-library");
 const googleapis_1 = require("googleapis");
 const generatePAT_1 = require("../helpers/generatePAT");
+const generateJWT_1 = require("../helpers/generateJWT");
+const sessionSchema_1 = __importDefault(require("../models/sessionSchema"));
 const usersPostLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, password } = req.body;
     try {
@@ -36,7 +38,6 @@ const usersPostLogin = (req, res) => __awaiter(void 0, void 0, void 0, function*
             });
         }
         // ! verificar la password
-        console.log(password);
         if (!user.password)
             return res.status(400).json({
                 msg: 'El email o la password son incorrectos.'
@@ -46,7 +47,7 @@ const usersPostLogin = (req, res) => __awaiter(void 0, void 0, void 0, function*
             return res.status(400).json({
                 msg: 'La password es incorrecta'
             });
-        const tokenJWT = yield (0, generarJWT_1.default)(user.id);
+        const tokenJWT = yield (0, generateJWT_1.generateJWT)(user.id, user.state);
         res.json({
             status: true,
             user,
@@ -101,7 +102,7 @@ const googlePostLogin = (req, res) => __awaiter(void 0, void 0, void 0, function
         //         msg: 'La cuenta ya no existe o ha sido suspendida.',
         //     })
         // }
-        const token = yield (0, generarJWT_1.default)(user.id);
+        const token = yield (0, generateJWT_1.generateJWT)(user.id, user.state);
         res.json({
             status: true,
             token,
@@ -156,7 +157,6 @@ const googleSignIn = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     const oAuth2Client = new google_auth_library_1.OAuth2Client(process.env.CLIENT_ID, process.env.CLIENT_SECRET, 'postmessage');
     try {
         const { tokens } = yield oAuth2Client.getToken(req.body.code); // exchange code for tokens
-        console.log('tokensitos', tokens);
         const idToken = tokens.id_token;
         if (typeof idToken !== 'string')
             return;
@@ -269,7 +269,7 @@ const extensionAuthUser = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 status: false,
                 msg: 'The account no longer exists or has been suspended.',
             });
-        // console.log(user)
+        const token = yield (0, generateJWT_1.generateJWT)(user.id, user.state);
         const userPAT = (0, generatePAT_1.generatePAT)();
         user.personalAccessToken = userPAT;
         yield user.save();
@@ -281,7 +281,8 @@ const extensionAuthUser = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 username: user.username,
                 photoUrl: user.photoUrl,
             },
-            pat: userPAT, // Personal Access Token
+            pat: userPAT,
+            token
         });
     }
     catch (error) {
@@ -293,4 +294,45 @@ const extensionAuthUser = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.extensionAuthUser = extensionAuthUser;
+const createToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.body;
+    try {
+        const token = yield (0, generateJWT_1.generateJWT)(uid);
+        res.json({
+            status: true,
+            token
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+});
+exports.createToken = createToken;
+const registerNewSession = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { _id, PRJACCUID, NPMUID } = req.body;
+    const operativeSystem = req.headers['x-client-os'];
+    const device = req.headers['x-client-device-type'];
+    try {
+        const session = new sessionSchema_1.default({
+            uid: PRJACCUID,
+            prjConsoleUID: NPMUID,
+            extensionUID: _id,
+            operativeSystem,
+            device
+        });
+        yield session.save();
+        res.status(200).json({
+            success: false,
+            message: 'New session saved.'
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'There wan an internal error'
+        });
+    }
+    ;
+});
+exports.registerNewSession = registerNewSession;
 //# sourceMappingURL=auths.js.map

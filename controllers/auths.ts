@@ -5,7 +5,10 @@ import generarJWT from '../helpers/generarJWT';
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import { generatePAT } from '../helpers/generatePAT';
-import nodemailer from 'nodemailer';
+import { generateJWT } from '../helpers/generateJWT';
+import Session from '../models/sessionSchema';
+
+
 
 const usersPostLogin = async( req: Request, res: Response ) => {
 
@@ -34,8 +37,6 @@ const usersPostLogin = async( req: Request, res: Response ) => {
 
         // ! verificar la password
 
-        console.log(password)
-
         if(!user.password) return res.status(400).json({
             msg: 'El email o la password son incorrectos.'
         });
@@ -46,12 +47,12 @@ const usersPostLogin = async( req: Request, res: Response ) => {
         })
             
 
-        const tokenJWT = await generarJWT( user.id )
+        const tokenJWT = await generateJWT( user.id, user.state )
 
         res.json({
-                status: true,
-                user,
-                tokenJWT
+            status: true,
+            user,
+            tokenJWT
         })
 
 
@@ -109,29 +110,29 @@ const googlePostLogin = async( req: Request, res: Response ) => {
 
         const user = await User.findOne( { email } )
 
-            // ! verificar si el email existe
+        // ! verificar si el email existe
 
-            if( !user ) return res.status(400).json({
-                    status: false,
-                    msg: 'El email no esta registrado'
-                })
- 
-            // ! verificar si el usuario sigue activo en la db
-    
-            // if(  !user.state  ) {
-            //     return res.status(400).json({
-            //         msg: 'La cuenta ya no existe o ha sido suspendida.',
-            //     })
-            // }
-      
-
-            const token = await generarJWT( user.id )
-
-            res.json({
-                    status: true,
-                    token,
-                    user 
+        if( !user ) return res.status(400).json({
+                status: false,
+                msg: 'El email no esta registrado'
             })
+
+        // ! verificar si el usuario sigue activo en la db
+
+        // if(  !user.state  ) {
+        //     return res.status(400).json({
+        //         msg: 'La cuenta ya no existe o ha sido suspendida.',
+        //     })
+        // }
+    
+
+        const token = await generateJWT( user.id, user.state )
+
+        res.json({
+            status: true,
+            token,
+            user 
+        })
 
 
     } catch (error) {
@@ -177,6 +178,7 @@ const googlePostRegistration = async( req: Request, res: Response ) => {
                     user,
                     token    
             })
+            
 
 
     } catch (error) {
@@ -201,8 +203,6 @@ const googleSignIn = async( req: Request, res: Response ) => {
     try {
 
         const { tokens } = await oAuth2Client.getToken(req.body.code); // exchange code for tokens
-        console.log('tokensitos', tokens);
-        
 
         const idToken = tokens.id_token
         if(typeof idToken !== 'string') return;
@@ -353,14 +353,11 @@ const extensionAuthUser = async (req: Request, res: Response) => {
             status: false,
             msg: 'The account no longer exists or has been suspended.',
         })
-
-        // console.log(user)
                 
-
+        const token = await generateJWT( user.id, user.state )
         const userPAT = generatePAT()
         user.personalAccessToken = userPAT;
         await user.save();
-     
 
         res.status(200).json({
             status: true,
@@ -371,6 +368,7 @@ const extensionAuthUser = async (req: Request, res: Response) => {
                 photoUrl: user.photoUrl,
             },
             pat: userPAT, // Personal Access Token
+            token
         })
 
 
@@ -384,6 +382,58 @@ const extensionAuthUser = async (req: Request, res: Response) => {
 
 };
 
+
+
+const createToken = async (req: Request, res: Response) => {
+
+    const { uid } = req.body;
+
+    try {
+        
+        const token = await generateJWT( uid )
+
+        res.json({
+            status: true,
+            token
+        })
+
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+
+const registerNewSession = async( req: Request, res: Response ) => {
+
+    const { _id, PRJACCUID, NPMUID } = req.body
+    const operativeSystem = req.headers['x-client-os']
+    const device = req.headers['x-client-device-type']
+
+    try {
+
+        const session = new Session({ 
+            uid: PRJACCUID, 
+            prjConsoleUID: NPMUID,         
+            extensionUID: _id,
+            operativeSystem, 
+            device 
+        });
+        await session.save();
+
+        res.status(200).json({
+            success: false,
+            message: 'New session saved.'
+        });
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'There wan an internal error'
+        });
+    };
+};
+
 export {
 
     googlePostRegistration,
@@ -394,6 +444,8 @@ export {
     me,
     extensionController,
     extensionStartOAuth,
-    extensionAuthUser
+    extensionAuthUser,
+    createToken,
+    registerNewSession
 }
 

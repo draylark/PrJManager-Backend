@@ -26,6 +26,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const searcherController = __importStar(require("../controllers/searcher"));
 const router = (0, express_1.Router)();
-router.post('/:type?', searcherController.searcher);
+router.post('/:type', searcherController.searcher);
 exports.default = router;
 //# sourceMappingURL=searcherR.js.map

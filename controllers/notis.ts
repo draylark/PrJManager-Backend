@@ -25,7 +25,7 @@ const getNotisbyUserId = async(req: Request, res: Response) => {
 
     try {
 
-        const notis = await Noti.find({ to: userid })
+        const notis = await Noti.find({ recipient: userid, status: true })
 
         return res.json({
             notis

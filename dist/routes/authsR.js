@@ -8,8 +8,8 @@ const auths_1 = require("../controllers/auths");
 const express_validator_1 = require("express-validator");
 const validar_campos_1 = __importDefault(require("../middlewares/validar-campos"));
 const validar_db_1 = require("../middlewares/validar-db");
-const validar_jwt_1 = __importDefault(require("../middlewares/validar-jwt"));
 const validate_credentials_1 = __importDefault(require("../middlewares/validate-credentials"));
+const validateJWT_1 = require("../middlewares/validateJWT");
 const router = (0, express_1.Router)();
 router.post('/login', [
     (0, express_validator_1.check)('email', 'Email is not valid').isEmail(),
@@ -44,7 +44,7 @@ router.get('/gitlab-access-token', (req, res) => {
     }
 });
 // State persistation
-router.post('/me', validar_jwt_1.default, auths_1.me);
+router.post('/me', validateJWT_1.validateJWT, auths_1.me);
 router.post('/extension', [
     (0, express_validator_1.check)('email', 'Email is not valid').isEmail(),
     (0, express_validator_1.check)('password', 'Password is required').not().isEmpty(),
@@ -56,5 +56,13 @@ router.post('/extension-auth-user', [
     validate_credentials_1.default,
     validar_campos_1.default
 ], auths_1.extensionAuthUser);
+router.post('/create-token', auths_1.createToken);
+router.get('/verify-token', validateJWT_1.validateJWT, (req, res) => {
+    res.json({
+        state: true,
+        msg: 'Token valido'
+    });
+});
+router.post('/new-session', auths_1.registerNewSession);
 exports.default = router;
 //# sourceMappingURL=authsR.js.map

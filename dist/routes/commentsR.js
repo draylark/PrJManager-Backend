@@ -28,7 +28,9 @@ const commentController = __importStar(require("../controllers/comments"));
 const router = (0, express_1.Router)();
 router.post('/create-comment', commentController.createCommentOrReply);
 // router.get( '/get-comments/:projectId', commentController.getAllComments  );
-router.get('/get-comments/:projectId', commentController.getAllCommentss);
+router.get('/get-comments/:projectId', commentController.getAllComments);
 router.get('/get-replies/:commentId', commentController.getCommentReplies);
+router.put('/like-comment', commentController.updateComment);
+router.put('/delete-comment/:id', commentController.deleteComment);
 exports.default = router;
 //# sourceMappingURL=commentsR.js.map

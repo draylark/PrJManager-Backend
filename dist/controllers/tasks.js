@@ -23,29 +23,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTasksByProject = exports.deleteTask = exports.putTask = exports.getTask = exports.postTask = void 0;
+exports.getTasksByProject = exports.getProyectTasksDataForHeatMap = exports.getTasksByRepo = exports.completeTask = exports.deleteTask = exports.putTask = exports.getTask = exports.createNewTask = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
-const postTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, description, projectId, createdBy, parentId, dueDate, endDate } = req.body;
-    const project = yield projectSchema_1.default.findById(projectId);
-    if (!project)
-        return res.status(400).json({
-            msg: 'This project doesnt exist or is it no longer active'
-        });
-    if (!name || !description || !projectId || !createdBy)
-        return res.status(400).json({
-            msg: 'Faltan campos por llenar'
-        });
+const createNewTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // console.log(req.body)
-        const thereIsParentId = parentId.length > 1 ? parentId : null;
-        const task = new taskSchema_1.default({ name, description, projectId, createdBy, parentId: thereIsParentId, dueDate, endDate });
+        const task = new taskSchema_1.default(req.body);
         yield task.save();
-        const updatedProject = yield projectSchema_1.default.findByIdAndUpdate(projectId, { $push: { tasks: task._id } }, { new: true });
         return res.json({
             task,
-            updatedProject,
             msg: 'Task created'
         });
     }
@@ -57,7 +43,7 @@ const postTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         });
     }
 });
-exports.postTask = postTask;
+exports.createNewTask = createNewTask;
 const getTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const tasks = yield taskSchema_1.default.find({ createdBy: id }).sort({ createdAt: -1 });
@@ -127,12 +113,88 @@ const completeTask = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         });
     }
 });
-const getTasksByProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { projectId } = req.params;
-    const tasks = yield taskSchema_1.default.find({ projectId });
+exports.completeTask = completeTask;
+const getTasksByRepo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { repoID } = req.params;
+    const tasks = yield taskSchema_1.default.find({ repository_related_id: repoID });
+    // console.log(tasks)
+    // console.log(repoID)
     res.json({
         tasks
     });
+});
+exports.getTasksByRepo = getTasksByRepo;
+const getProyectTasksDataForHeatMap = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectID } = req.params;
+    const { owner, tasks } = req;
+    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    try {
+        if (owner && owner === true) {
+            let matchCondition = { project: projectID, status: 'completed' };
+            if (year) {
+                matchCondition = Object.assign(Object.assign({}, matchCondition), { updatedAt: {
+                        $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                        $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+                    } });
+            }
+            const tasks = yield taskSchema_1.default.find(matchCondition)
+                .select('-hash')
+                .sort({ createdAt: -1 });
+            return res.json({
+                tasks
+            });
+        }
+        else {
+            return res.json({
+                tasks
+            });
+        }
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
+});
+exports.getProyectTasksDataForHeatMap = getProyectTasksDataForHeatMap;
+const getTasksByProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectID } = req.params;
+    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const { owner, completedTasks, approvalTasks } = req;
+    try {
+        if (owner && owner === true) {
+            console.log('Entrando al owner');
+            let matchCondition1 = { project: projectID, status: { $in: ['completed', 'approval'] } };
+            if (year) {
+                matchCondition1 = Object.assign(Object.assign({}, matchCondition1), { updatedAt: {
+                        $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                        $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+                    } });
+            }
+            const tasks = yield taskSchema_1.default.find(matchCondition1)
+                .sort({ createdAt: -1 });
+            const completedTasks = tasks.filter(task => task.status === 'completed');
+            const approvalTasks = tasks.filter(task => task.status === 'approval');
+            return res.json({
+                completedTasks,
+                approvalTasks
+            });
+        }
+        else {
+            console.log('Entrando al colaborador');
+            return res.json({
+                completedTasks,
+                approvalTasks
+            });
+        }
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
 });
 exports.getTasksByProject = getTasksByProject;
 //# sourceMappingURL=tasks.js.map

@@ -26,7 +26,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const friendsController = __importStar(require("../controllers/friends"));
 const router = (0, express_1.Router)();
-router.post('/add-friend/:userId', friendsController.addFriend);
-router.post('/manage-request/:userId', friendsController.manageFriendsRequests);
+router.get('/get-friends/:uid', friendsController.getFriends);
+router.post('/add-friend/:requestedUID', friendsController.addFriend);
+router.post('/handle-request/:requesterID', friendsController.manageFriendsRequests);
 exports.default = router;
 //# sourceMappingURL=friendsR.js.map

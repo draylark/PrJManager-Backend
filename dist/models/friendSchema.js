@@ -2,15 +2,29 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const friendSchema = new mongoose_1.Schema({
-    name: {
+    friends_reference: [
+        {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'User',
+        },
+    ],
+    friendship_status: {
         type: String,
-        required: true,
+        enum: ['pending', 'accepted', 'rejected'],
+        default: 'pending',
     },
-    email: {
-        type: String,
-        required: true,
-        unique: true,
+    requester: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
     },
+    recipient: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+    },
+    state: {
+        type: Boolean,
+        default: false,
+    }
 });
 const Friend = (0, mongoose_1.model)('Friend', friendSchema);
 exports.default = Friend;

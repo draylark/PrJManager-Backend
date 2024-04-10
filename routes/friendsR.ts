@@ -6,11 +6,13 @@ const router = Router();
 
 
 
+router.get('/get-friends/:uid', friendsController.getFriends)
 
-router.post('/add-friend/:userId', friendsController.addFriend)
+
+router.post('/add-friend/:requestedUID', friendsController.addFriend)
 
 
-router.post('/manage-request/:userId', friendsController.manageFriendsRequests)
+router.post('/handle-request/:requesterID', friendsController.manageFriendsRequests)
 
 
 export default router;

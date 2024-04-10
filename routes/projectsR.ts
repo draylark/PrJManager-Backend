@@ -1,9 +1,14 @@
 import { Router } from "express";
-import { deleteProject, getProject, postProject, putProject, calculateProjectProgress, getProjectById } from "../controllers/projects";
+import * as prjController from "../controllers/projects";
 import { check } from "express-validator";
 import validarJWT from "../middlewares/validar-jwt";
 import validarCampos from "../middlewares/validar-campos";
 import { isPrIdExist } from "../helpers/dvValidators";
+import { validateJWT } from "../middlewares/validateJWT";
+import { validateProjectExistance, validateCollaboratorAccessOnProject, newCollaborators, updateCollaborators, deleteCollaborators, 
+        updateOtherCollaboratorDataOfDeletedCollaborators, updateOtherCDataOfProjectModifiedCollaborators, createOtherCDataOfProjectCreatedCollaborators, 
+        handlePrJCollaboratorInvitation, returnDataBaseOnAccessLevel } from '../middlewares/project-middlewares';
+
 
 const router = Router()
 
@@ -15,15 +20,22 @@ router.post('/create-project', [
     check('description', 'Description is Required').not().isEmpty(),
     check('owner', 'Owner is Required').not().isEmpty(),
     validarCampos
-], postProject);
+], prjController.postProject);
 
-router.get('/get-project/:userId', getProject);
+router.get('/get-project/:userId', prjController.getProject);
+
+router.get('/get-project-by-id/:projectId', prjController.getProjectById);
 
 
-router.get('/get-project-by-id/:projectId', getProjectById);
+router.get('/get-projects/:uid', prjController.getProjects);
 
-
-router.put('/update-project/:projectId', putProject);
+router.put('/update-project/:projectID', 
+        [ 
+            validateJWT,
+            validateProjectExistance,
+            validateCollaboratorAccessOnProject( ['manager', 'administrator'] )
+        ],       
+        prjController.updateProject);
 
 
 router.delete('/delete-project/:id',[
@@ -31,11 +43,32 @@ router.delete('/delete-project/:id',[
     check('id', 'It is not a valid MongoId').isMongoId(),
     check('id').custom( isPrIdExist ),
     validarCampos
-], deleteProject);
+], prjController.deleteProject);
 
 
+router.get('/collaborators/:projectID', prjController.getCollaborators)
 
-router.get('/calculate-progress/:projectId', calculateProjectProgress);
+router.put('/collaborators/:projectID', 
+    [
+        validateJWT,
+        validateProjectExistance,
+        validateCollaboratorAccessOnProject( ['administrator'] ),
+        deleteCollaborators,
+        updateOtherCollaboratorDataOfDeletedCollaborators,
+        updateCollaborators,
+        updateOtherCDataOfProjectModifiedCollaborators,
+        newCollaborators,
+        // createOtherCDataOfProjectCreatedCollaborators
+        
+    ],
+     prjController.response)
+
+
+router.put('/handle-invitation/:projectID', [validateJWT, validateProjectExistance, 
+    handlePrJCollaboratorInvitation, createOtherCDataOfProjectCreatedCollaborators ],  prjController.response)
+
+router.get('/readme/:readmeID', prjController.getReadme)
+
 
 
 export default router

@@ -4,36 +4,14 @@ import Task from '../models/taskSchema';
 
 
 
-const postTask = async(req: Request, res: Response) => {
-
-    const { name, description, projectId, createdBy, parentId, dueDate, endDate  } = req.body
-
-    const project = await Project.findById( projectId )
-   
-    if(!project) return res.status(400).json({
-        msg: 'This project doesnt exist or is it no longer active'
-    });
-
-    if( !name || !description || !projectId || !createdBy ) return res.status(400).json({
-        msg: 'Faltan campos por llenar'
-    });
-
-
+export const createNewTask = async(req: Request, res: Response) => {
     try {
 
-        // console.log(req.body)
-        const thereIsParentId = parentId.length > 1 ? parentId : null
-        const task = new Task( { name, description, projectId, createdBy, parentId: thereIsParentId, dueDate, endDate  } )
+        const task = new Task( req.body )
         await task.save()
-
-        const updatedProject = await Project.findByIdAndUpdate( 
-            projectId,
-            { $push: { tasks: task._id } }, 
-            { new: true } )
 
         return res.json({
             task,
-            updatedProject,
             msg: 'Task created'
         });
 
@@ -44,14 +22,10 @@ const postTask = async(req: Request, res: Response) => {
             error
         })
     }
-
-
-
-
 }; 
 
 
-const getTask = async(req: Request, res: Response) => {
+export const getTask = async(req: Request, res: Response) => {
 
     const { id } = req.params
     const tasks = await Task.find({ createdBy: id }).sort({ createdAt: -1 });
@@ -63,7 +37,7 @@ const getTask = async(req: Request, res: Response) => {
 
 
 
-const putTask = async(req: Request, res: Response) => {
+export const putTask = async(req: Request, res: Response) => {
     
 
     try {
@@ -89,7 +63,7 @@ const putTask = async(req: Request, res: Response) => {
 }; 
 
 
-const deleteTask = async(req: Request, res: Response) => {
+export const deleteTask = async(req: Request, res: Response) => {
 
 
     try {
@@ -128,7 +102,7 @@ const deleteTask = async(req: Request, res: Response) => {
 }; 
 
 
-const completeTask = async(req: Request, res: Response) => {
+export const completeTask = async(req: Request, res: Response) => {
 
 
     try {
@@ -153,11 +127,13 @@ const completeTask = async(req: Request, res: Response) => {
 }
 
 
-const getTasksByProject = async(req: Request, res: Response) => {
+export const getTasksByRepo = async(req: Request, res: Response) => {
 
-    const { projectId } = req.params
+    const { repoID } = req.params
 
-    const tasks = await Task.find({ projectId });
+    const tasks = await Task.find({ repository_related_id: repoID});
+    // console.log(tasks)
+    // console.log(repoID)
 
     res.json({
         tasks
@@ -167,10 +143,94 @@ const getTasksByProject = async(req: Request, res: Response) => {
 }
 
 
-export {
-    postTask,
-    getTask,
-    putTask,
-    deleteTask,
-    getTasksByProject
+
+export const getProyectTasksDataForHeatMap = async (req: Request, res: Response) => {
+    const { projectID } = req.params;
+    const { owner, tasks } = req
+    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+
+    try {
+
+        if( owner && owner === true ) {
+            let matchCondition = { project: projectID, status: 'completed' };
+            if (year) {
+                matchCondition = { 
+                ...matchCondition,
+                updatedAt: {
+                    $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                    $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+                }
+                };
+            }
+
+            const tasks = await Task.find(matchCondition)
+                    .select('-hash')
+                    .sort({ createdAt: -1 });
+                    
+            return res.json({
+                tasks
+            });
+        } else {
+            return res.json({
+                tasks
+            });
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
 }
+
+export const getTasksByProject = async (req: Request, res: Response) => {
+    const { projectID } = req.params;
+    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const { owner, completedTasks, approvalTasks } = req;
+
+    try {
+        if( owner && owner === true ) {
+            console.log('Entrando al owner')
+            let matchCondition1 = { project: projectID, status: { $in: ['completed', 'approval'] } };
+            if (year) {
+                matchCondition1 = { 
+                ...matchCondition1,
+                updatedAt: {
+                    $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                    $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+                }
+                };
+            }
+
+            const tasks = await Task.find(matchCondition1)
+                    .sort({ createdAt: -1 });
+
+
+            const completedTasks = tasks.filter(task => task.status === 'completed');
+            const approvalTasks = tasks.filter(task => task.status === 'approval');
+
+            return res.json({
+                completedTasks,
+                approvalTasks
+
+            });
+        } else {
+
+            console.log('Entrando al colaborador')
+
+            return res.json({
+                completedTasks,
+                approvalTasks
+            });
+        }
+
+
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
+}
+

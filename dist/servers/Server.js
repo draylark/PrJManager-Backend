@@ -17,6 +17,7 @@ const cors_1 = __importDefault(require("cors"));
 const connection_1 = __importDefault(require("../db/connection"));
 const routes_1 = require("../routes");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const express_useragent_1 = __importDefault(require("express-useragent"));
 // https://localhost:3000/api/auth/login
 class Server {
     constructor() {
@@ -36,7 +37,9 @@ class Server {
             searcher: '/api/searcher',
             friends: '/api/friends',
             likes: '/api/likes',
-            extension: '/api/extension'
+            extension: '/api/extension',
+            layer: '/api/layer',
+            commits: '/api/commits'
         };
         this.conectarDB();
         this.middlewares();
@@ -55,6 +58,7 @@ class Server {
         this.app.use(express_1.default.json());
         this.app.use((0, cookie_parser_1.default)());
         this.app.use(express_1.default.static('public'));
+        this.app.use(express_useragent_1.default.express());
     }
     listen() {
         this.app.listen(this.port, () => {
@@ -76,6 +80,8 @@ class Server {
         this.app.use(this.paths.friends, routes_1.friendsRouter);
         this.app.use(this.paths.likes, routes_1.likesRouter);
         this.app.use(this.paths.extension, routes_1.extensionRouter);
+        this.app.use(this.paths.layer, routes_1.layersRouter);
+        this.app.use(this.paths.commits, routes_1.commitsRouter);
     }
 }
 exports.default = Server;

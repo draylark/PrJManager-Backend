@@ -1,4 +1,5 @@
 import { Schema, model } from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 
 const repoSchema = new Schema({
   name: {
@@ -9,69 +10,58 @@ const repoSchema = new Schema({
     type: String,
     required: true,
   },
-  gitlabId: {
-    type: Number,
-    required: true,
-  },
-  project: {
-    type: Schema.Types.ObjectId,
-    ref: 'Project',
-    required: true,
-  },
-  layer: {
-    type: Schema.Types.ObjectId,
-    ref: 'Layer',
-    required: true,
-  },
   visibility: {
     type: String,
     required: true,
-    enum: ['public', 'internal', 'private'],
+    enum: ['open', 'internal', 'restricted'],
+  },
+  gitUrl: {
+    type: String,
+    required: true,
   },
   webUrl: {
     type: String,
     required: true,
   },
-  owner: {
+  branches: [
+    {
+      name: { type: String, required: true, unique: true},
+      default: { type: Boolean, required: true, },
+    },
+  ],
+  defaultBranch: {
+    type: String,
+    required: true,
+  },
+  projectID: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true,
+  },
+  layerID: {
+    type: Schema.Types.ObjectId,
+    ref: 'Layer',
+    required: true,
+  },
+  gitlabId: {
+    type: Number,
+    required: true,
+  },
+  creator: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
   },
-  collaborators: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      accessLevel: {
-        type: String,
-        enum: ['Editor', 'Reader', 'Admin', 'owner'],
-        required: true,
-      },
-    },
-  ],
-  branches: [
-    {
-      name: {
-        type: String,
-        required: true,
-      },
-      lastCommit: {
-        type: Schema.Types.ObjectId,
-        ref: 'Commit',
-      },
-    },
-  ],
-  commits: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: 'Commit',
-    },
-  ],
-  gitUrl: {
-    type: String,
-    required: true,
-  }
+  
 }, { timestamps: true });
 
-const Repo = model('Repo', repoSchema);
 
+
+repoSchema.methods.toJSON = function(){
+  const { __v, webUrl, gitUrl, repoGitlabId, ...repo } = this.toObject();
+  return repo
+}
+
+
+const Repo = model('Repo', repoSchema);
 export default Repo;

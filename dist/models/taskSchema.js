@@ -13,48 +13,68 @@ var __rest = (this && this.__rest) || function (s, e) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const TaskSchema = new mongoose_1.Schema({
-    name: {
+    type: {
         type: String,
+        enum: ['open', 'assigned'],
         required: true
     },
-    description: {
-        type: String,
-        default: ''
+    layer_number_task: {
+        type: String, required: true
     },
-    parentId: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Task',
-        default: null
+    task_name: {
+        type: String, required: true
     },
-    status: {
-        type: String,
-        enum: ['To Do', 'In Progress', 'Done'],
-        default: 'To Do'
+    task_description: {
+        type: String, required: true
     },
-    dueDate: {
-        type: Date,
-        default: null
-    },
-    endDate: {
-        type: Date,
-        default: null
-    },
-    projectId: {
+    project: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Project',
+    },
+    layer_related_id: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Layer',
+    },
+    repository_related_id: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Repo'
+    },
+    goals: [{ type: String }],
+    commits_hashes: [{
+            type: String
+        }],
+    status: {
+        type: String,
+        required: true,
+        enum: ['pending', 'approval', 'completed'],
+        default: 'completed'
+    },
+    priority: {
+        type: String,
+        enum: ['Low', 'Medium', 'High', 'Critical'],
         required: true
     },
-    createdBy: {
+    conclusion_date: { type: Date },
+    deadline: {
+        type: Date,
+        default: null
+    },
+    additional_info: {
+        estimated_hours: { type: Number },
+        actual_hours: { type: Number },
+        notes: [{ type: String }],
+    },
+    assigned_to: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
-    }
-}, {
-    timestamps: true
-});
+        default: null
+    },
+    contributorsIds: [{
+            type: String
+        }],
+}, { timestamps: true });
 TaskSchema.methods.toJSON = function () {
-    const _a = this.toObject(), { __v, _id } = _a, task = __rest(_a, ["__v", "_id"]);
-    task.tid = _id;
+    const _a = this.toObject(), { __v } = _a, task = __rest(_a, ["__v"]);
     return task;
 };
 const Task = (0, mongoose_1.model)('Task', TaskSchema);

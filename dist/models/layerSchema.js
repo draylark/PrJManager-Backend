@@ -17,12 +17,7 @@ const LayerSchema = new mongoose_1.Schema({
     },
     visibility: {
         type: String,
-        enum: ['public', 'private', 'internal'],
-        required: true
-    },
-    owner: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'User',
+        enum: ['open', 'internal', 'restricted'],
         required: true
     },
     project: {
@@ -33,20 +28,20 @@ const LayerSchema = new mongoose_1.Schema({
             type: mongoose_1.Schema.Types.ObjectId,
             ref: 'Repo'
         }],
-    collaborators: [{
-            user: {
-                type: mongoose_1.Schema.Types.ObjectId,
-                ref: 'User'
-            },
-            accessLevel: {
-                type: Number,
-                required: true
-            }
-        }],
     gitlabId: {
         type: Number,
         required: true
-    }
+    },
+    status: {
+        type: Boolean,
+        default: true
+    },
+    creator: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
 });
-exports.default = (0, mongoose_1.model)('Layer', LayerSchema);
+const Layer = (0, mongoose_1.model)('Layer', LayerSchema);
+exports.default = Layer;
 //# sourceMappingURL=layerSchema.js.map

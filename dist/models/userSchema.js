@@ -30,48 +30,18 @@ const UserSchema = new mongoose_1.Schema({
         type: String,
         default: null
     },
-    status: {
+    google: {
         type: Boolean,
-        require: [true, 'Status is required']
+        default: false
     },
-    role: {
+    website: {
         type: String,
-        require: [true, 'Role is required'],
-        emun: ['ADMIN_ROLE', 'USER_ROLE'],
-        default: 'USER_ROLE'
+        default: null
     },
     state: {
         type: Boolean,
         default: true
     },
-    google: {
-        type: Boolean,
-        default: false
-    },
-    createdProjects: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Project'
-        }],
-    completedproyects: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Project'
-        }],
-    clients: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Client'
-        }],
-    friendsRequests: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'User'
-        }],
-    friends: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'User'
-        }],
-    events: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Event'
-        }],
     personalAccessToken: {
         type: String,
         default: null

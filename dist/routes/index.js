@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extensionRouter = exports.likesRouter = exports.friendsRouter = exports.searcherRouter = exports.commentsRouter = exports.gitlabRouter = exports.reposRouter = exports.eventRouter = exports.clientRouter = exports.notisRouter = exports.tasksRouter = exports.proyectsRouter = exports.usersRouter = exports.authRouter = void 0;
+exports.commitsRouter = exports.layersRouter = exports.extensionRouter = exports.likesRouter = exports.friendsRouter = exports.searcherRouter = exports.commentsRouter = exports.gitlabRouter = exports.reposRouter = exports.eventRouter = exports.clientRouter = exports.notisRouter = exports.tasksRouter = exports.proyectsRouter = exports.usersRouter = exports.authRouter = void 0;
 var authsR_1 = require("./authsR");
 Object.defineProperty(exports, "authRouter", { enumerable: true, get: function () { return __importDefault(authsR_1).default; } });
 var usersR_1 = require("./usersR");
@@ -32,4 +32,8 @@ var likesR_1 = require("./likesR");
 Object.defineProperty(exports, "likesRouter", { enumerable: true, get: function () { return __importDefault(likesR_1).default; } });
 var extensionR_1 = require("./extensionR");
 Object.defineProperty(exports, "extensionRouter", { enumerable: true, get: function () { return __importDefault(extensionR_1).default; } });
+var layersR_1 = require("./layersR");
+Object.defineProperty(exports, "layersRouter", { enumerable: true, get: function () { return __importDefault(layersR_1).default; } });
+var commitsR_1 = require("./commitsR");
+Object.defineProperty(exports, "commitsRouter", { enumerable: true, get: function () { return __importDefault(commitsR_1).default; } });
 //# sourceMappingURL=index.js.map

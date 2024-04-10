@@ -12,33 +12,79 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.likes = void 0;
+exports.updateLike = exports.newLike = exports.getLikes = void 0;
 const likeSchema_1 = __importDefault(require("../models/likeSchema"));
-const likes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { commentId, uid, type } = req.body;
-    // Validación de los datos de entrada...
+const commentSchema_1 = __importDefault(require("../models/commentSchema"));
+const getLikes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { commentId, uid } = req.params;
     try {
+        const like = yield likeSchema_1.default.findOne({ commentId, uid, isLike: true });
+        res.json({
+            like: like || null // Devuelve el like encontrado o null si no hay coincidencia
+        });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+exports.getLikes = getLikes;
+const newLike = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid, isLike } = req.body;
+    const { commentId } = req.params;
+    try {
+        if (typeof isLike !== 'boolean') {
+            return res.status(400).json({ message: 'Invalid value' });
+        }
+        const updateOperation = { $inc: { likes: 1 } };
+        const comment = yield commentSchema_1.default.findByIdAndUpdate(commentId, updateOperation, { new: true });
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
         const existingLike = yield likeSchema_1.default.findOne({ commentId, uid });
         if (existingLike) {
-            if (type !== null) {
-                existingLike.type = type;
-                yield existingLike.save();
-                res.status(200).json({ message: 'Like/Dislike actualizado', like: existingLike });
-            }
-            else {
-                yield existingLike.deleteOne();
-                res.status(200).json({ message: 'Like/Dislike eliminado' });
-            }
+            const updateLikeOperation = { $set: { isLike } };
+            const likeUpdated = yield likeSchema_1.default.findOneAndUpdate({ commentId, uid }, updateLikeOperation, { new: true });
+            return res.json({
+                likeUpdated,
+                comment
+            });
         }
         else {
-            const newLike = new likeSchema_1.default({ commentId, uid, type });
-            yield newLike.save();
-            res.status(201).json({ message: 'Like/Dislike creado', like: newLike });
+            const like = new likeSchema_1.default({ commentId, uid, isLike });
+            const savedLike = yield like.save();
+            res.json({
+                savedLike,
+                comment
+            });
         }
     }
     catch (error) {
-        res.status(500).json({ message: 'Error en el servidor', error: error.message });
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
-exports.likes = likes;
+exports.newLike = newLike;
+const updateLike = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid, isLike } = req.body;
+    const { commentId } = req.params;
+    try {
+        const commentUpdateOperation = { $inc: { likes: -1 } };
+        const comment = yield commentSchema_1.default.findByIdAndUpdate(commentId, commentUpdateOperation, { new: true });
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+        const likeUpdateOperation = { $set: { isLike } };
+        const likeUpdated = yield likeSchema_1.default.findOneAndUpdate({ commentId, uid }, likeUpdateOperation, { new: true });
+        if (!likeUpdated) {
+            return res.status(404).json({ message: 'Like not found' });
+        }
+        res.json({
+            likeUpdated,
+            comment
+        });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+exports.updateLike = updateLike;
 //# sourceMappingURL=likes.js.map

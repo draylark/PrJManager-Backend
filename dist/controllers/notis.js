@@ -39,7 +39,7 @@ exports.postNoti = postNoti;
 const getNotisbyUserId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userid = req.params.id;
     try {
-        const notis = yield notisSchema_1.default.find({ to: userid });
+        const notis = yield notisSchema_1.default.find({ recipient: userid, status: true });
         return res.json({
             notis
         });

@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { usersPostRegistration, usersPostLogin, 
          googleSignIn, googlePostLogin, 
-         googlePostRegistration, me, extensionController, extensionStartOAuth, extensionAuthUser } from '../controllers/auths';
+         googlePostRegistration, me, extensionController, extensionStartOAuth, extensionAuthUser, createToken, registerNewSession } from '../controllers/auths';
 import { check } from 'express-validator'
 import validarCampos from '../middlewares/validar-campos';
 import { isEmailAlreadyExist } from '../middlewares/validar-db';
 import validarJWT from '../middlewares/validar-jwt';
 import validateCredentials from '../middlewares/validate-credentials';
+import { validateJWT } from '../middlewares/validateJWT';
 
 const router = Router()
 
@@ -57,7 +58,7 @@ router.get('/gitlab-access-token', (req, res) => {
 
 // State persistation
 
-router.post('/me', validarJWT , me );
+router.post('/me', validateJWT , me );
 
 router.post('/extension', [
     check('email', 'Email is not valid').isEmail(),
@@ -73,6 +74,19 @@ router.post('/extension-auth-user', [
     validateCredentials,
     validarCampos
 ],  extensionAuthUser );
+
+
+router.post('/create-token', createToken)
+
+
+router.get('/verify-token', validateJWT, (req, res) => {
+    res.json({
+        state: true,
+        msg: 'Token valido'
+    });
+})
+
+router.post('/new-session', registerNewSession )
 
 
 

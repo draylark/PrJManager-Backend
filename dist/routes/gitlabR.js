@@ -28,25 +28,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const gitController = __importStar(require("../controllers/gitlab"));
+const DB_validators_1 = require("../middlewares/DB-validators");
+const validateJWT_1 = require("../middlewares/validateJWT");
 const multer_1 = __importDefault(require("multer"));
 const upload = (0, multer_1.default)({ dest: 'uploads/' });
 const router = express_1.default.Router();
-// router.get('/auth', gitController.callback );
-// router.get('/access-token', (req, res) => { 
-//     const accessToken = req.cookies['gitlabToken'];
-//     if (accessToken) {
-//         res.json({ token: accessToken });
-//     } else {
-//       res.status(400).send('No se encontró el token de acceso');
-//     }
-// } )
 router.get('/get-layers/:userId', gitController.getAllGroups);
-router.get('/loadRepoFiles/:repoId', gitController.loadRepoFiles);
-router.get('/loadContentFile/:repoId', gitController.loadContentFile);
-router.get('/loadFolderContents/:repoId', gitController.loadFolderContents);
+router.get('/loadRepoFiles/:repoID/:branch', [validateJWT_1.validateJWT, DB_validators_1.validateRepositoryExistance], gitController.loadRepoFiles);
+router.get('/loadContentFile/:repoID', [validateJWT_1.validateJWT, DB_validators_1.validateRepositoryExistance], gitController.loadContentFile);
+router.get('/loadFolderContents/:repoID', [validateJWT_1.validateJWT, DB_validators_1.validateRepositoryExistance], gitController.loadFolderContents);
 router.post('/create-group', gitController.createGroup);
 router.post('/create-repo', gitController.createRepo);
 router.post('/update-layer/:layerId', gitController.updateLayer);
-router.post('/requestAccess', upload.single('file'), gitController.requestAccess);
 exports.default = router;
 //# sourceMappingURL=gitlabR.js.map

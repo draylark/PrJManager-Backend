@@ -1,24 +1,33 @@
 
 import { Schema, model, Document } from 'mongoose';
 
-interface IFriend extends Document {
-  name: string;
-  age: number;
-  email: string;
-}
 
-const friendSchema = new Schema<IFriend>({
-  name: {
+const friendSchema = new Schema({
+  friends_reference: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+  ],
+  friendship_status: {
     type: String,
-    required: true,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: 'pending',
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
+  requester: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
   },
+  recipient: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  state: {
+    type: Boolean,
+    default: false,
+  }
 });
 
-const Friend = model<IFriend>('Friend', friendSchema);
+const Friend = model('Friend', friendSchema);
 
 export default Friend;
