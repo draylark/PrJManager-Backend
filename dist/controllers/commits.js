@@ -17,6 +17,10 @@ const commitSchema_1 = __importDefault(require("../models/commitSchema"));
 const getCommitsByRepo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
     const commits = yield commitSchema_1.default.find({ repository: repoID })
+        .populate({
+        path: 'associated_task',
+        select: '_id task_name'
+    })
         .select('-hash')
         .sort({ createdAt: -1 }); // Orden descendente por fecha de creación
     res.json({
@@ -26,20 +30,36 @@ const getCommitsByRepo = (req, res) => __awaiter(void 0, void 0, void 0, functio
 exports.getCommitsByRepo = getCommitsByRepo;
 const getCommitDiff = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoGitlabID, commit: { hash } } = req;
-    const url = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/commits/${hash}/diff`;
+    const diffUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/commits/${hash}/diff`;
+    const branchesUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/branches`;
     try {
-        const response = yield fetch(url, {
-            headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_TOKEN}` },
-        });
-        console.log(response);
-        if (!response.ok) { // Verifica si la respuesta HTTP es exitosa (status en el rango 200-299)
-            return res.status(response.status).json({ message: `Error from GitLab API: ${response.statusText}` });
+        // Realiza ambas llamadas API simultáneamente
+        const [diffResponse, branchesResponse] = yield Promise.all([
+            fetch(diffUrl, {
+                headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_TOKEN}` },
+            }),
+            fetch(branchesUrl, {
+                headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_TOKEN}` },
+            })
+        ]);
+        // Verifica si alguna de las respuestas de la API no fue exitosa
+        if (!diffResponse.ok) {
+            return res.status(diffResponse.status).json({ message: `Error from GitLab API on diffs: ${diffResponse.statusText}` });
         }
-        const data = yield response.json();
-        res.json(data);
+        if (!branchesResponse.ok) {
+            return res.status(branchesResponse.status).json({ message: `Error fetching branches: ${branchesResponse.statusText}` });
+        }
+        const diffData = yield diffResponse.json();
+        const branches = yield branchesResponse.json();
+        const branchesWithCommit = branches.filter(branch => branch.commit && branch.commit.id === hash);
+        // Envía los resultados en la respuesta
+        res.json({
+            diff: diffData,
+            branches: branchesWithCommit.map(branch => branch.name) // Devuelve solo los nombres de las ramas que contienen el commit
+        });
     }
     catch (error) {
-        console.error('Error fetching commit diffs:', error);
+        console.error('Error fetching commit diffs or branches:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
@@ -58,6 +78,10 @@ const getProyectCommits = (req, res) => __awaiter(void 0, void 0, void 0, functi
                     } });
             }
             const commits = yield commitSchema_1.default.find(matchConditions)
+                .populate({
+                path: 'associated_task',
+                select: '_id task_name'
+            })
                 .select('-hash')
                 .sort({ createdAt: -1 });
             return res.json({

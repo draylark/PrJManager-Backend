@@ -23,16 +23,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProjectLayersDataBaseOnAccess = exports.updateOtherCDataOfDeletedLayerCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfLayerModifiedCollaborators = exports.updateLayerCollaborators = exports.createOtherCDataOfLayerCreatedCollaborators = exports.newCollaborators = exports.verifyOneLevelAccessOfNewCollaborator = exports.validateCollaboratorAccessOnLayer = exports.validateLayerExistance = void 0;
+exports.getProjectLayersDataBaseOnAccess = exports.updateOtherCDataOfDeletedLayerCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfLayerModifiedCollaborators = exports.updateLayerCollaborators = exports.createOtherCDataOfLayerCreatedCollaborators = exports.newCollaborators = exports.verifyProjectLayers = exports.verifyProjectLevelAccessOfNewCollaborator = exports.validateCollaboratorAccessOnLayer = exports.validateLayerExistance = void 0;
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const layerSchema_1 = __importDefault(require("../models/layerSchema"));
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
 // ! Middlewares Helpers
 const whatIsTheAccess = (accessLevel) => {
     switch (accessLevel) {
-        case 'contributor':
+        case 'guest':
             return {
                 levels: ['open'],
+            };
+        case 'contributor':
+            return {
+                levels: ['open', 'internal'],
             };
         case 'coordinator':
             return {
@@ -95,6 +99,7 @@ const validateCollaboratorAccessOnLayer = (minAccess) => {
         const collaborator = yield collaboratorSchema_1.default.findOne({ uid, 'layer._id': layerID });
         if (!collaborator) {
             return res.status(400).json({
+                success: false,
                 message: 'You do not have access to this Layer'
             });
         }
@@ -107,26 +112,76 @@ const validateCollaboratorAccessOnLayer = (minAccess) => {
     });
 };
 exports.validateCollaboratorAccessOnLayer = validateCollaboratorAccessOnLayer;
-const verifyOneLevelAccessOfNewCollaborator = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { project } = req;
+// export const verifyOneLevelAccessOfNewCollaborator = async( req: Request, res: Response, next: NextFunction ) => {
+//     const { project } = req;
+//     const { newCollaborators } = req.body;
+//     const { projectID } = req.params
+//     if( newCollaborators.length === 0 ) {
+//         return next();
+//     }
+//     try {
+//         await Promise.all(newCollaborators.map( async (collaborator) => {
+//             const { id, photoUrl, name } = collaborator;
+//             const prjCollaborator = await Collaborator.findOne({ uid: id, 'project._id': project._id });
+//             if (!prjCollaborator) {
+//                 const c = new Collaborator({ uid: id, name, photoUrl, projectID, project: { _id: project._id, accessLevel: 'contributor' } });
+//                 await c.save();
+//             }
+//         }));
+//         next();
+//     } catch (error) {
+//         console.log('error AASDASDASDGSC', error)
+//         res.status(400).json({
+//             message: 'Internal Server error',
+//             error
+//         });
+//     }
+// };
+const verifyProjectLevelAccessOfNewCollaborator = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectID, layerID } = req.params;
     const { newCollaborators } = req.body;
     if (newCollaborators.length === 0) {
         return next();
     }
-    yield Promise.all(newCollaborators.map((collaborator) => __awaiter(void 0, void 0, void 0, function* () {
-        const { id, photoUrl, name } = collaborator;
-        const prjCollaborator = yield collaboratorSchema_1.default.findOne({ uid: id, 'project._id': project._id });
+    for (const collaborator of newCollaborators) {
+        const { id } = collaborator;
+        // Comprobar y actualizar o insertar para el proyecto
+        const prjCollaborator = yield collaboratorSchema_1.default.findOne({ uid: id, state: true, projectID, 'project._id': projectID });
         if (!prjCollaborator) {
-            const c = new collaboratorSchema_1.default({ uid: id, name, photoUrl, project: { _id: project._id, accessLevel: 'contributor' } });
-            yield c.save();
+            return res.status(400).json({
+                success: false,
+                message: 'The collaborator(s) has not been found at the project level, to add a collaborator at the layer level, this must be a collaborator at the project level first.'
+            });
         }
-    })));
+    }
     next();
 });
-exports.verifyOneLevelAccessOfNewCollaborator = verifyOneLevelAccessOfNewCollaborator;
+exports.verifyProjectLevelAccessOfNewCollaborator = verifyProjectLevelAccessOfNewCollaborator;
+const verifyProjectLayers = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { project } = req;
+    try {
+        if (project && (project === null || project === void 0 ? void 0 : project.layers) >= 3) {
+            return res.status(400).json({
+                success: false,
+                message: 'The Project has reached the maximum number of layers',
+                type: 'layers-limit'
+            });
+        }
+        next();
+    }
+    catch (error) {
+        console.log('error', error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error,
+            type: 'server-error'
+        });
+    }
+});
+exports.verifyProjectLayers = verifyProjectLayers;
 // ! Creation / Updating
 const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { layerID } = req.params;
+    const { layerID, projectID } = req.params;
     const { newCollaborators } = req.body;
     if (newCollaborators.length === 0) {
         req.creatingMiddlewareState = false;
@@ -136,16 +191,18 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
     try {
         const processCollaborator = (collaborator) => __awaiter(void 0, void 0, void 0, function* () {
             const { id, name, photoUrl, accessLevel } = collaborator;
-            let existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid: id, 'layer._id': layerID });
+            let existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid: id, 'layer._id': layerID, projectID });
+            console.log('existingCollaborator', existingCollaborator);
             if (existingCollaborator) {
                 if (!existingCollaborator.state) {
-                    yield collaboratorSchema_1.default.updateOne({ _id: existingCollaborator._id, 'layer._id': layerID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'layer.accessLevel': accessLevel } });
+                    yield collaboratorSchema_1.default.updateOne({ _id: existingCollaborator._id, 'layer._id': layerID, projectID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'layer.accessLevel': accessLevel } });
                     totalCreated++;
                 }
                 // Si el colaborador existe y ya está activo, no aumentar totalCreated.
             }
             else {
-                const c = new collaboratorSchema_1.default({ uid: id, name, photoUrl, layer: { _id: layerID, accessLevel }, state: true });
+                console.log('new collaborator');
+                const c = new collaboratorSchema_1.default({ uid: id, name, photoUrl, projectID, layer: { _id: layerID, accessLevel }, state: true });
                 yield c.save();
                 totalCreated++;
             }
@@ -160,6 +217,7 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
         next();
     }
     catch (error) {
+        console.log('1', error);
         res.status(400).json({
             message: 'Internal Server error',
             error
@@ -186,6 +244,7 @@ const createOtherCDataOfLayerCreatedCollaborators = (req, res, next) => __awaite
             yield Promise.all(repos.map((repo) => __awaiter(void 0, void 0, void 0, function* () {
                 // Crear el colaborador en el repositorio si tiene acceso
                 let existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid: id, projectID, 'repository._id': repo._id });
+                console.log('existingCollaborator en repo de layer', existingCollaborator);
                 if (existingCollaborator && !existingCollaborator.state) {
                     if (levels.includes(repo.visibility)) {
                         yield collaboratorSchema_1.default.updateOne({ uid: id, projectID, 'repository._id': repo._id }, { $set: { state: true, 'repository.accessLevel': appropiateLevelAccessOnRepo(accessLevel) } });
@@ -203,7 +262,7 @@ const createOtherCDataOfLayerCreatedCollaborators = (req, res, next) => __awaite
         next();
     }
     catch (error) {
-        console.log(error);
+        console.log('2', error);
         res.status(400).json({
             message: 'Internal Server error',
             error
@@ -268,6 +327,7 @@ const updateOtherCDataOfLayerModifiedCollaborators = (req, res, next) => __await
                         // El colaborador debería tener acceso pero no existe un documento, créalo
                         const newCollaborator = new collaboratorSchema_1.default({
                             repository: { _id: repo._id, accessLevel: appropiateLevelAccessOnRepo(collaborator.accessLevel) },
+                            projectID,
                             uid: collaborator.id,
                             name: collaborator.name,
                             photoUrl: collaborator.photoUrl || null,
@@ -293,7 +353,7 @@ const updateOtherCDataOfLayerModifiedCollaborators = (req, res, next) => __await
 exports.updateOtherCDataOfLayerModifiedCollaborators = updateOtherCDataOfLayerModifiedCollaborators;
 // ! Deletion
 const deleteCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { layerID } = req.params;
+    const { layerID, projectID } = req.params;
     const { deletedCollaborators } = req.body;
     if (deletedCollaborators.length === 0) {
         req.totalDeletedCollaborators = 0;
@@ -303,7 +363,7 @@ const deleteCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0
     try {
         // Ejecutar todas las operaciones de actualización y capturar los resultados
         const results = yield Promise.all(deletedCollaborators.map(id => {
-            return collaboratorSchema_1.default.updateMany({ uid: id, 'layer._id': layerID }, { $set: { state: false } });
+            return collaboratorSchema_1.default.updateMany({ uid: id, 'layer._id': layerID, projectID }, { $set: { state: false } });
         }));
         const totalModified = results.reduce((acc, result) => acc + result.modifiedCount, 0);
         // Almacenar el total de colaboradores eliminados en el objeto de solicitud para su uso posterior
@@ -335,9 +395,13 @@ const updateOtherCDataOfDeletedLayerCollaborators = (req, res, next) => __awaite
                 populate: { path: 'layerID' }
             });
             yield Promise.all(collaborators.map(collaborator => {
+                if (!collaborator.repository) {
+                    console.error('Error: repository is null for collaborator', collaborator);
+                    return; // Skip this iteration if repository is null
+                }
                 const _a = collaborator.repository._id, { layerID: layer } = _a, rest = __rest(_a, ["layerID"]);
-                if (layer._id.toString() === layerID && collaborator.state === true) {
-                    console.log('Colaborador eliminado en repositorio:', rest);
+                if (layer && layer._id.toString() === layerID && collaborator.state === true) {
+                    // Process your update logic here
                     return collaboratorSchema_1.default.updateOne({ uid: id, projectID, 'repository._id': collaborator.repository._id }, { $set: { state: false } });
                 }
             }));
@@ -351,6 +415,7 @@ const updateOtherCDataOfDeletedLayerCollaborators = (req, res, next) => __awaite
             error
         });
     }
+    ;
 });
 exports.updateOtherCDataOfDeletedLayerCollaborators = updateOtherCDataOfDeletedLayerCollaborators;
 // ! Collaborator Propper Data Return based on access level

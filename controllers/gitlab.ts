@@ -67,13 +67,13 @@ export const getAllGroups = async (req: express.Request, res: express.Response) 
 
 export const createGroup = async ( req: express.Request, res: express.Response ) => {
 
-  const { name, description, visibility, parent_id, project, owner } = req.body;
+  const { name, description, visibility, parent_id, project, creator } = req.body;
 
   try {
 
-    
+      const gitlabAccessToken = process.env.IDK
       const permanentVsibility = 'private'
-      const accessToken = 'glpat-ZBBtQb_tKQNBrYqRXAmi';
+
       const path = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
       const response = await axios.post('https://gitlab.com/api/v4/groups', {
           name,
@@ -83,29 +83,29 @@ export const createGroup = async ( req: express.Request, res: express.Response )
           parent_id,
       }, {
           headers: {
-              'Authorization': `Bearer ${accessToken}`,
+              'Authorization': `Bearer ${gitlabAccessToken}`,
           },
       });
 
       const layer = response.data
 
       const newLayer = new Layer({
-        name: layer.name,
+        name: name,
         path: layer.path,
-        description: layer.description,
+        description: description,
         visibility,
         project,
-        owner,
-        members: layer.members,
+        creator,
         gitlabId: layer.id
       })
 
       await newLayer.save()
 
-      const updatedProject = await Project.findByIdAndUpdate( 
+      const updatedProject = await Project.findByIdAndUpdate(
         project,
-        { $push: { layers: newLayer._id } }, 
-        { new: true } )
+        { $inc: { layers: 1 } }, // Incrementa el contador de 'layers' en 1
+        { new: true }
+      );
 
 
       res.json({ 
@@ -123,13 +123,14 @@ export const createGroup = async ( req: express.Request, res: express.Response )
 
 export const createRepo = async (req: express.Request, res: express.Response) => {
   
-  const { name, description, visibility, gitlabId, layer, userId, project } = req.body;
+  const { name, description, visibility, gitlabId, layer, project, branches, defaultBranch, creator } = req.body;
 
   try {
 
     const permanentVsibility = 'private'
     const accessToken = 'glpat-ZBBtQb_tKQNBrYqRXAmi';
-    
+    const gitlabAccessToken = process.env.GITLAB_ACCESS_TOKEN
+
     // Crear el repositorio en GitLab
     const response = await axios.post(`https://gitlab.com/api/v4/projects`, {
       name,
@@ -138,7 +139,7 @@ export const createRepo = async (req: express.Request, res: express.Response) =>
       namespace_id: gitlabId, // ID del grupo donde se creará el repositorio
     }, {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': `Bearer ${gitlabAccessToken}`,
       },
     });
 
@@ -146,29 +147,31 @@ export const createRepo = async (req: express.Request, res: express.Response) =>
 
     // Guardar el repositorio en la base de datos
     const newRepo = new Repo({
-      name: repo.name,
-      description: repo.description,
+      name,
+      description,
       visibility,
-      project,
-      layer,
+      projectID: project,
+      layerID: layer,
       gitlabId: repo.id,
-      owner: userId,
       gitUrl: repo.http_url_to_repo,
-      webUrl: repo.web_url,   
+      webUrl: repo.web_url, 
+      branches,  
+      defaultBranch,
+      creator
     });
 
     await newRepo.save();
 
-    // Actualizar el grupo con el nuevo repositorio
-    const updatedLayer = await Layer.findByIdAndUpdate(
-      layer,
-      { $push: { repos: newRepo._id } },
+    const updatedProject = await Project.findByIdAndUpdate(
+      project,
+      { $inc: { repositories: 1 } },
       { new: true }
     );
 
+
     res.json({
       newRepo,
-      updatedLayer
+      updatedProject,
     });
   } catch (error) {
     console.log(error.response ? error.response.data : error.message);

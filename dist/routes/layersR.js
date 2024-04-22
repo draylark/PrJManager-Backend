@@ -30,7 +30,12 @@ const project_middlewares_1 = require("../middlewares/project-middlewares");
 const layer_middlewares_1 = require("../middlewares/layer-middlewares");
 const router = (0, express_1.Router)();
 router.get('/get-layer/:layerID', layerController.getLayersById);
-router.post('/create-layer/:projectID', layerController.createLayer);
+router.post('/create-layer/:projectID', [
+    validateJWT_1.validateJWT,
+    project_middlewares_1.validateProjectExistance,
+    (0, project_middlewares_1.validateCollaboratorAccessOnProject)(['administrator', 'manager']),
+    layer_middlewares_1.verifyProjectLayers
+], layerController.createLayer);
 router.get('/get-layers/:projectID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
@@ -54,7 +59,7 @@ router.put('/collaborators/:projectID/:layerID', [
     layer_middlewares_1.updateOtherCDataOfDeletedLayerCollaborators,
     layer_middlewares_1.updateLayerCollaborators,
     layer_middlewares_1.updateOtherCDataOfLayerModifiedCollaborators,
-    layer_middlewares_1.verifyOneLevelAccessOfNewCollaborator,
+    layer_middlewares_1.verifyProjectLevelAccessOfNewCollaborator,
     layer_middlewares_1.newCollaborators,
     layer_middlewares_1.createOtherCDataOfLayerCreatedCollaborators
 ], layerController.response);

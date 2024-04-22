@@ -32,10 +32,12 @@ const collaborators_middlewares_1 = require("../middlewares/collaborators-middle
 const repository_middlewares_1 = require("../middlewares/repository-middlewares");
 const router = (0, express_1.Router)();
 // CRUD routes
-router.post('/', [
+router.post('/create-repository/:projectID/:layerID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
     layer_middlewares_1.validateLayerExistance,
+    (0, repository_middlewares_1.verifyTwoAccessLevelOfCollaborator)(['administrator', 'manager']),
+    repository_middlewares_1.verifyLayerRepos,
     repository_middlewares_1.createRepoOnGitlab,
     repository_middlewares_1.createRepoOnMongoDB,
     collaborators_middlewares_1.addNewRepoCollaborators,
@@ -61,7 +63,8 @@ router.put('/update-repository/:projectID/:layerID/:repoID', [
     (0, repository_middlewares_1.validateCollaboratorAccessOnRepository)(['administrator']),
     repository_middlewares_1.deleteCollaborators,
     repository_middlewares_1.updateRepoCollaborators,
-    repository_middlewares_1.verifyTwoAccessLevelOfNewCollaborator,
+    repository_middlewares_1.verifyProjectLevelAccessOfNewCollaborator,
+    repository_middlewares_1.verifyLayerAccessLevelOfNewCollaborator,
     repository_middlewares_1.newCollaborators
 ], repoController.updateRepository);
 router.get('/get-repos/:projectID', [
@@ -70,6 +73,7 @@ router.get('/get-repos/:projectID', [
     project_middlewares_1.validateUserAccessOnProject,
     repository_middlewares_1.getProjectReposDataBaseOnAccess
 ], repoController.getReposByProject);
+router.get('/get-layer-repos/:projectID/:layerID', [validateJWT_1.validateJWT, project_middlewares_1.validateProjectExistance, project_middlewares_1.validateUserAccessOnProject], repoController.getReposByLayer);
 // Donde se encontraba antes: 
 // router.get('/getAllRepos/:userId', getRepositoriesByUserId);
 exports.default = router;

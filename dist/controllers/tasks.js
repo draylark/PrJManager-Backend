@@ -23,22 +23,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTasksByProject = exports.getProyectTasksDataForHeatMap = exports.getTasksByRepo = exports.completeTask = exports.deleteTask = exports.putTask = exports.getTask = exports.createNewTask = void 0;
+exports.updateTaskStatus = exports.getTasksByProject = exports.getProyectTasksDataForHeatMap = exports.getTasksByRepo = exports.completeTask = exports.deleteTask = exports.putTask = exports.getTask = exports.createNewTask = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
+const notisSchema_1 = __importDefault(require("../models/notisSchema"));
 const createNewTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const task = new taskSchema_1.default(req.body);
         yield task.save();
         return res.json({
             task,
-            msg: 'Task created'
+            message: 'Task created'
         });
     }
     catch (error) {
         console.log(req.body);
         return res.status(400).json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         });
     }
@@ -197,4 +198,125 @@ const getTasksByProject = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.getTasksByProject = getTasksByProject;
+const updateTaskStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { collaborator, type, owner } = req;
+    const { status, approved } = req.body;
+    const { taskId } = req.params;
+    const uid = req.query.uid;
+    try {
+        const task = yield taskSchema_1.default.findById(taskId);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+        if (!approved) {
+            if (type === 'owner') {
+                console.log(owner);
+                yield taskSchema_1.default.updateOne({ _id: taskId }, { status: status, reasons: req.body.reasons });
+                yield Promise.all(task.contributorsIds.map((contributorId) => __awaiter(void 0, void 0, void 0, function* () {
+                    const noti = new notisSchema_1.default({
+                        type: 'task-rejected',
+                        title: 'Task rejected',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been rejected`,
+                        from: {
+                            name: owner.username,
+                            ID: uid,
+                            photoUrl: owner.photoUrl || null
+                        },
+                        recipient: contributorId,
+                        additionalData: {
+                            reasons: req.body.reasons
+                        }
+                    });
+                    yield noti.save();
+                })));
+                return res.json({
+                    success: true,
+                    message: 'Reasons Subbmited',
+                    type: 'task-rejected'
+                });
+            }
+            else {
+                yield taskSchema_1.default.updateOne({ _id: taskId }, { status: status, reasons: req.body.reasons });
+                yield Promise.all(task.contributorsIds.map((contributorId) => __awaiter(void 0, void 0, void 0, function* () {
+                    const noti = new notisSchema_1.default({
+                        type: 'task-rejected',
+                        title: 'Task rejected',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been rejected`,
+                        from: {
+                            name: collaborator.name,
+                            ID: collaborator.uid,
+                            photoUrl: collaborator.photoUrl || null
+                        },
+                        recipient: contributorId,
+                        additionalData: {
+                            reasons: req.body.reasons
+                        }
+                    });
+                    yield noti.save();
+                })));
+                return res.json({
+                    success: true,
+                    message: 'Reasons Subbmited',
+                    type: 'task-rejected'
+                });
+            }
+        }
+        else {
+            if (type === 'owner') {
+                console.log(owner);
+                yield taskSchema_1.default.updateOne({ _id: taskId }, { status: status });
+                yield Promise.all(task.contributorsIds.map((contributorId) => __awaiter(void 0, void 0, void 0, function* () {
+                    const noti = new notisSchema_1.default({
+                        type: 'task-approved',
+                        title: 'Task approved',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been approved`,
+                        from: {
+                            name: owner.username,
+                            ID: uid,
+                            photoUrl: owner.photoUrl || null
+                        },
+                        recipient: contributorId
+                    });
+                    yield noti.save();
+                })));
+                return res.json({
+                    success: true,
+                    message: 'Task Approved',
+                    type: 'task-approved'
+                });
+            }
+            else {
+                yield taskSchema_1.default.updateOne({ _id: taskId }, { status: status });
+                yield Promise.all(task.contributorsIds.map((contributorId) => __awaiter(void 0, void 0, void 0, function* () {
+                    const noti = new notisSchema_1.default({
+                        type: 'task-approved',
+                        title: 'Task approved',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been approved`,
+                        from: {
+                            name: collaborator.name,
+                            ID: collaborator.uid,
+                            photoUrl: collaborator.photoUrl || null
+                        },
+                        recipient: contributorId
+                    });
+                    yield noti.save();
+                })));
+                return res.json({
+                    success: true,
+                    message: 'Task Approved',
+                    type: 'task-approved'
+                });
+            }
+        }
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error'
+        });
+    }
+    ;
+});
+exports.updateTaskStatus = updateTaskStatus;
 //# sourceMappingURL=tasks.js.map

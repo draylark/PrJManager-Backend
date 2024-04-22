@@ -38,12 +38,13 @@ export const getRepositories = async (req: Request, res: Response) => {
 };
 
 
-
 export const getRepositoryById = async (req: Request, res: Response) => {
     try {
         const repository = await Repo.findById(req.params.id);
         if (repository) {
-            res.status(200).json(repository);
+            res.status(200).json({
+                repo: repository
+            });
         } else {
             res.status(404).json({ message: 'Repository not found' });
         }
@@ -55,35 +56,34 @@ export const getRepositoryById = async (req: Request, res: Response) => {
 
 // UPDATE
 export const updateRepository = async (req: Request, res: Response) => {
-    // const { repoID } = req.params;
-    // const { creatingMiddlewareState, updatingMiddlewareState, deletingMiddlewareState} = req
-    // const { collaborators, modifiedCollaborators, deletedCollaborators, newCollaborators, newDefaultBranch, ...rest } = req.body;        
+    const { repoID } = req.params;
+    const { creatingMiddlewareState, updatingMiddlewareState, deletingMiddlewareState} = req
+    const { collaborators, modifiedCollaborators, deletedCollaborators, newCollaborators, newDefaultBranch, ...rest } = req.body;        
 
-    // const message = `${creatingMiddlewareState || updatingMiddlewareState || deletingMiddlewareState ? 
-    //                 `Collaborators and repository updated successfully. ${newDefaultBranch ? 'Default branch changed.' : ''}`  : 
-    //                 'Repository updated successfully'} ${newDefaultBranch ? ' and default branch changed.' : ''}   
-    // `
+    const message = `${creatingMiddlewareState || updatingMiddlewareState || deletingMiddlewareState ? 
+                    `Collaborators and repository updated successfully. ${newDefaultBranch ? 'Default branch changed.' : ''}`  : 
+                    'Repository updated successfully'} ${newDefaultBranch ? ' and default branch changed.' : ''}   
+    `
 
-    // try {
-    //     if( newDefaultBranch !== null ){
-    //         const repository = await Repo.findByIdAndUpdate(repoID, {...rest, defaultBranch: newDefaultBranch }, { new: true });
-    //         res.status(200).json({
-    //             success: true,
-    //             message,
-    //             repository
-    //         });
-    //     } else {
-    //         const repository = await Repo.findByIdAndUpdate(repoID, rest, { new: true });
+    try {
+        if( newDefaultBranch !== null ){
+            const repository = await Repo.findByIdAndUpdate(repoID, {...rest, defaultBranch: newDefaultBranch }, { new: true });
             res.status(200).json({
                 success: true,
-                message: 'Repository updated successfully'
-                // message,
-                // repository
+                message,
+                repository
             });
-        // }        
-    // } catch (error) {
-    //     return res.status(500).json({ message: error.message });
-    // }
+        } else {
+            const repository = await Repo.findByIdAndUpdate(repoID, rest, { new: true });
+            res.status(200).json({
+                success: true,
+                message,
+                repository
+            });
+        }        
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
 };
 
 // DELETE
@@ -286,3 +286,31 @@ export const getReposByProject = async (req: Request, res: Response) => {
     }
 
 };
+
+
+export const getReposByLayer = async (req: Request, res: Response) => {
+
+    const { layerID } = req.params;
+    const { owner, repos } = req;
+
+    try {
+        if( owner && owner === true){
+            const repos = await Repo.find({ layerID });
+            res.status(200).json({
+                success: true,
+                repos
+            });
+        } else {
+            res.status(200).json({
+                success: true,
+                repos
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ 
+            success: false,
+            message: error.message 
+        });
+    }
+
+}

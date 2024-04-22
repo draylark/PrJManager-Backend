@@ -24,16 +24,19 @@ const TaskSchema = new Schema({
   project : {
     type: Schema.Types.ObjectId,
     ref: 'Project',
+    required: true
   },
 
   layer_related_id: { 
     type: Schema.Types.ObjectId,
     ref: 'Layer', 
+    required: true
   },
 
   repository_related_id: { 
     type: Schema.Types.ObjectId,
-    ref: 'Repo' 
+    ref: 'Repo',
+    required: true
   },
 
   goals: [{ type: String }],

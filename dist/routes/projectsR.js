@@ -48,7 +48,7 @@ router.get('/get-projects/:uid', prjController.getProjects);
 router.put('/update-project/:projectID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
-    (0, project_middlewares_1.validateCollaboratorAccessOnProject)(['manager', 'administrator'])
+    project_middlewares_1.itIsTheOwner
 ], prjController.updateProject);
 router.delete('/delete-project/:id', [
     validar_jwt_1.default,

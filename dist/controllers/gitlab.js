@@ -56,10 +56,10 @@ const getAllGroups = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 });
 exports.getAllGroups = getAllGroups;
 const createGroup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, description, visibility, parent_id, project, owner } = req.body;
+    const { name, description, visibility, parent_id, project, creator } = req.body;
     try {
+        const gitlabAccessToken = process.env.IDK;
         const permanentVsibility = 'private';
-        const accessToken = 'glpat-ZBBtQb_tKQNBrYqRXAmi';
         const path = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
         const response = yield axios_1.default.post('https://gitlab.com/api/v4/groups', {
             name,
@@ -69,22 +69,22 @@ const createGroup = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             parent_id,
         }, {
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${gitlabAccessToken}`,
             },
         });
         const layer = response.data;
         const newLayer = new layerSchema_1.default({
-            name: layer.name,
+            name: name,
             path: layer.path,
-            description: layer.description,
+            description: description,
             visibility,
             project,
-            owner,
-            members: layer.members,
+            creator,
             gitlabId: layer.id
         });
         yield newLayer.save();
-        const updatedProject = yield projectSchema_1.default.findByIdAndUpdate(project, { $push: { layers: newLayer._id } }, { new: true });
+        const updatedProject = yield projectSchema_1.default.findByIdAndUpdate(project, { $inc: { layers: 1 } }, // Incrementa el contador de 'layers' en 1
+        { new: true });
         res.json({
             newLayer,
             updatedProject,
@@ -97,10 +97,11 @@ const createGroup = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.createGroup = createGroup;
 const createRepo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, description, visibility, gitlabId, layer, userId, project } = req.body;
+    const { name, description, visibility, gitlabId, layer, project, branches, defaultBranch, creator } = req.body;
     try {
         const permanentVsibility = 'private';
         const accessToken = 'glpat-ZBBtQb_tKQNBrYqRXAmi';
+        const gitlabAccessToken = process.env.GITLAB_ACCESS_TOKEN;
         // Crear el repositorio en GitLab
         const response = yield axios_1.default.post(`https://gitlab.com/api/v4/projects`, {
             name,
@@ -109,28 +110,29 @@ const createRepo = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             namespace_id: gitlabId, // ID del grupo donde se creará el repositorio
         }, {
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${gitlabAccessToken}`,
             },
         });
         const repo = response.data;
         // Guardar el repositorio en la base de datos
         const newRepo = new repoSchema_1.default({
-            name: repo.name,
-            description: repo.description,
+            name,
+            description,
             visibility,
-            project,
-            layer,
+            projectID: project,
+            layerID: layer,
             gitlabId: repo.id,
-            owner: userId,
             gitUrl: repo.http_url_to_repo,
             webUrl: repo.web_url,
+            branches,
+            defaultBranch,
+            creator
         });
         yield newRepo.save();
-        // Actualizar el grupo con el nuevo repositorio
-        const updatedLayer = yield layerSchema_1.default.findByIdAndUpdate(layer, { $push: { repos: newRepo._id } }, { new: true });
+        const updatedProject = yield projectSchema_1.default.findByIdAndUpdate(project, { $inc: { repositories: 1 } }, { new: true });
         res.json({
             newRepo,
-            updatedLayer
+            updatedProject,
         });
     }
     catch (error) {

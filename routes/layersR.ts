@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import * as layerController from '../controllers/layers';
 import { validateJWT } from '../middlewares/validateJWT';
-import { validateProjectExistance, ownerOrCollaborator, validateUserAccessOnProject } from '../middlewares/project-middlewares';
+import { validateProjectExistance, validateUserAccessOnProject, validateCollaboratorAccessOnProject } from '../middlewares/project-middlewares';
 import { updateLayerCollaborators, validateLayerExistance, validateCollaboratorAccessOnLayer, 
-         verifyOneLevelAccessOfNewCollaborator, deleteCollaborators, newCollaborators, createOtherCDataOfLayerCreatedCollaborators,
-         updateOtherCDataOfLayerModifiedCollaborators, updateOtherCDataOfDeletedLayerCollaborators, getProjectLayersDataBaseOnAccess } from '../middlewares/layer-middlewares';
+    verifyProjectLevelAccessOfNewCollaborator, deleteCollaborators, newCollaborators, createOtherCDataOfLayerCreatedCollaborators,
+         updateOtherCDataOfLayerModifiedCollaborators, updateOtherCDataOfDeletedLayerCollaborators, getProjectLayersDataBaseOnAccess, verifyProjectLayers } from '../middlewares/layer-middlewares';
 
 
 
@@ -16,7 +16,13 @@ router.get('/get-layer/:layerID',
 );
 
 
-router.post('/create-layer/:projectID', layerController.createLayer );
+router.post('/create-layer/:projectID', [
+    validateJWT,
+    validateProjectExistance,
+    validateCollaboratorAccessOnProject(['administrator', 'manager']),
+    verifyProjectLayers
+
+], layerController.createLayer );
 
 router.get('/get-layers/:projectID', 
     [
@@ -51,7 +57,7 @@ router.put('/collaborators/:projectID/:layerID',
         updateOtherCDataOfDeletedLayerCollaborators,
         updateLayerCollaborators,
         updateOtherCDataOfLayerModifiedCollaborators,
-        verifyOneLevelAccessOfNewCollaborator,
+        verifyProjectLevelAccessOfNewCollaborator,
         newCollaborators,
         createOtherCDataOfLayerCreatedCollaborators
     ], 

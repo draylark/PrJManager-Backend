@@ -9,9 +9,13 @@ import Repo from '../models/repoSchema';
 
 const whatIsTheAccess = (accessLevel: string) => {
     switch (accessLevel) {
-        case 'contributor':
+        case 'guest':
             return {
                 levels: ['open'],
+            };
+        case 'contributor':
+            return {
+                levels: ['open', 'internal'],
             };
         case 'coordinator':
             return {
@@ -69,7 +73,7 @@ export const validateLayerExistance = async (req: Request, res: Response, next: 
     };
 };
 
-export const validateCollaboratorAccessOnLayer = ( minAccess ) => {
+export const validateCollaboratorAccessOnLayer = ( minAccess: string[] ) => {
     return async ( req: Request, res: Response, next: NextFunction ) => {
         const { project } = req
         const { layerID } = req.params
@@ -83,6 +87,7 @@ export const validateCollaboratorAccessOnLayer = ( minAccess ) => {
 
         if (!collaborator) {
             return res.status(400).json({
+                success: false,
                 message: 'You do not have access to this Layer'
             })
         }
@@ -96,34 +101,90 @@ export const validateCollaboratorAccessOnLayer = ( minAccess ) => {
     };
 };
 
-export const verifyOneLevelAccessOfNewCollaborator = async( req: Request, res: Response, next: NextFunction ) => {
+// export const verifyOneLevelAccessOfNewCollaborator = async( req: Request, res: Response, next: NextFunction ) => {
 
-    const { project } = req;
-    const { newCollaborators } = req.body;
+//     const { project } = req;
+//     const { newCollaborators } = req.body;
+//     const { projectID } = req.params
     
-    if( newCollaborators.length === 0 ) {
-        return next();
+//     if( newCollaborators.length === 0 ) {
+//         return next();
+//     }
+
+//     try {
+//         await Promise.all(newCollaborators.map( async (collaborator) => {
+//             const { id, photoUrl, name } = collaborator;
+//             const prjCollaborator = await Collaborator.findOne({ uid: id, 'project._id': project._id });
+//             if (!prjCollaborator) {
+//                 const c = new Collaborator({ uid: id, name, photoUrl, projectID, project: { _id: project._id, accessLevel: 'contributor' } });
+//                 await c.save();
+//             }
+//         }));
+
+//         next();
+//     } catch (error) {
+//         console.log('error AASDASDASDGSC', error)
+//         res.status(400).json({
+//             message: 'Internal Server error',
+//             error
+//         });
+//     }
+// };
+
+
+export const verifyProjectLevelAccessOfNewCollaborator = async (req: Request, res: Response, next: NextFunction) => {
+    const { projectID, layerID } = req.params;
+    const { newCollaborators } = req.body;
+  
+    if (newCollaborators.length === 0) {
+      return next();
     }
-
-    await Promise.all(newCollaborators.map( async (collaborator) => {
-        const { id, photoUrl, name } = collaborator;
-        const prjCollaborator = await Collaborator.findOne({ uid: id, 'project._id': project._id });
-        if (!prjCollaborator) {
-            const c = new Collaborator({ uid: id, name, photoUrl, project: { _id: project._id, accessLevel: 'contributor' } });
-            await c.save();
-        }
-    }));
-
+  
+    for (const collaborator of newCollaborators) {
+      const { id } = collaborator;
+      // Comprobar y actualizar o insertar para el proyecto
+      const prjCollaborator = await Collaborator.findOne({ uid: id, state: true, projectID, 'project._id': projectID });
+      if (!prjCollaborator) {
+        return res.status(400).json({
+            success: false,
+            message: 'The collaborator(s) has not been found at the project level, to add a collaborator at the layer level, this must be a collaborator at the project level first.'
+        });
+      } 
+    }
     next();
 };
 
+
+export const verifyProjectLayers = async(req: Request, res: Response, next: NextFunction) => {
+    const { project } = req
+    try {
+
+        if( project && project?.layers >= 3 ){
+            return res.status(400).json({
+                success: false,
+                message: 'The Project has reached the maximum number of layers',
+                type: 'layers-limit'
+            });
+        }
+        next();
+    } catch (error) {
+        console.log('error', error)
+        res.status(400).json({
+            message: 'Internal Server error',
+            error,
+            type: 'server-error'
+        });
+    }
+
+};
+  
 
 
 // ! Creation / Updating
 
 export const newCollaborators = async(req: Request, res: Response, next: NextFunction) => {
-    
-    const { layerID } = req.params
+
+    const { layerID, projectID } = req.params
     const { newCollaborators } = req.body
 
     if( newCollaborators.length === 0 ) {
@@ -137,16 +198,19 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
 
         const processCollaborator = async (collaborator) => {
             const { id, name, photoUrl, accessLevel } = collaborator;
-            let existingCollaborator = await Collaborator.findOne({ uid: id, 'layer._id': layerID });
+            let existingCollaborator = await Collaborator.findOne({ uid: id, 'layer._id': layerID, projectID });
+            console.log('existingCollaborator', existingCollaborator)
 
             if (existingCollaborator) {
                 if (!existingCollaborator.state) {
-                    await Collaborator.updateOne({ _id: existingCollaborator._id, 'layer._id': layerID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'layer.accessLevel': accessLevel } });
+                    await Collaborator.updateOne({ _id: existingCollaborator._id, 'layer._id': layerID, projectID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'layer.accessLevel': accessLevel } });
                     totalCreated++;
                 }
                 // Si el colaborador existe y ya está activo, no aumentar totalCreated.
             } else {
-                const c = new Collaborator({ uid: id, name, photoUrl, layer: { _id: layerID, accessLevel }, state: true });
+
+                console.log('new collaborator')
+                const c = new Collaborator({ uid: id, name, photoUrl, projectID, layer: { _id: layerID, accessLevel }, state: true });
                 await c.save();
                 totalCreated++;
             }
@@ -162,6 +226,7 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
         req.creatingMiddlewareState = true;
         next();
     } catch (error) {
+        console.log('1',error)
         res.status(400).json({
             message: 'Internal Server error',
             error
@@ -194,6 +259,8 @@ export const createOtherCDataOfLayerCreatedCollaborators = async(req: Request, r
                 // Crear el colaborador en el repositorio si tiene acceso
                 let existingCollaborator = await Collaborator.findOne({ uid: id, projectID, 'repository._id': repo._id });
 
+                console.log('existingCollaborator en repo de layer', existingCollaborator)
+
                 if (existingCollaborator && !existingCollaborator.state) {
                     if( levels.includes(repo.visibility) ) {
                         await Collaborator.updateOne({ uid: id, projectID, 'repository._id': repo._id }, { $set: { state: true, 'repository.accessLevel' : appropiateLevelAccessOnRepo(accessLevel) } });
@@ -209,7 +276,7 @@ export const createOtherCDataOfLayerCreatedCollaborators = async(req: Request, r
 
         next();
     } catch (error) {
-        console.log(error)
+        console.log('2',error)
         res.status(400).json({
             message: 'Internal Server error',
             error
@@ -248,6 +315,7 @@ export const updateLayerCollaborators = async(req: Request, res: Response, next:
         });
     }
 };
+
 export const updateOtherCDataOfLayerModifiedCollaborators = async(req: Request, res: Response, next: NextFunction) => {
     const { projectID, layerID } = req.params;
     const { modifiedCollaborators } = req.body;
@@ -291,6 +359,7 @@ export const updateOtherCDataOfLayerModifiedCollaborators = async(req: Request, 
                         // El colaborador debería tener acceso pero no existe un documento, créalo
                         const newCollaborator = new Collaborator({
                             repository: { _id: repo._id, accessLevel: appropiateLevelAccessOnRepo(collaborator.accessLevel) },
+                            projectID,
                             uid: collaborator.id,
                             name: collaborator.name,
                             photoUrl: collaborator.photoUrl || null,
@@ -322,7 +391,7 @@ export const updateOtherCDataOfLayerModifiedCollaborators = async(req: Request, 
 
 export const deleteCollaborators = async(req: Request, res: Response, next: NextFunction) => {
 
-    const { layerID } = req.params;
+    const { layerID, projectID } = req.params;
     const { deletedCollaborators } = req.body;
   
     if (deletedCollaborators.length === 0) {
@@ -334,7 +403,7 @@ export const deleteCollaborators = async(req: Request, res: Response, next: Next
     try {
         // Ejecutar todas las operaciones de actualización y capturar los resultados
         const results = await Promise.all(deletedCollaborators.map(id => {
-            return Collaborator.updateMany({ uid: id, 'layer._id': layerID }, { $set: { state: false } });
+            return Collaborator.updateMany({ uid: id, 'layer._id': layerID, projectID }, { $set: { state: false } });
         }));
         const totalModified = results.reduce((acc, result) => acc + result.modifiedCount, 0);
 
@@ -350,6 +419,7 @@ export const deleteCollaborators = async(req: Request, res: Response, next: Next
     }
   
 };
+
 export const updateOtherCDataOfDeletedLayerCollaborators = async(req: Request, res: Response, next: NextFunction) => {
 
     const { projectID, layerID } = req.params;
@@ -369,16 +439,22 @@ export const updateOtherCDataOfDeletedLayerCollaborators = async(req: Request, r
                                                 populate: { path: 'layerID' }
                                             })         
 
-            await Promise.all( collaborators.map( collaborator => {
-                const { _id: { layerID: layer, ...rest } } = collaborator.repository
-                if( layer._id.toString() === layerID && collaborator.state === true ){
-                    console.log('Colaborador eliminado en repositorio:', rest)
+            await Promise.all(collaborators.map(collaborator => {
+                if (!collaborator.repository) {
+                    console.error('Error: repository is null for collaborator', collaborator);
+                    return; // Skip this iteration if repository is null
+                }
+            
+                const { _id: { layerID: layer, ...rest } } = collaborator.repository;
+            
+                if (layer && layer._id.toString() === layerID && collaborator.state === true) {
+                    // Process your update logic here
                     return Collaborator.updateOne(
                         { uid: id, projectID, 'repository._id': collaborator.repository._id },
                         { $set: { state: false } }
-                    )            
+                    );
                 }
-            }))
+            }));
         })) 
 
         next(); 
@@ -388,10 +464,8 @@ export const updateOtherCDataOfDeletedLayerCollaborators = async(req: Request, r
             message: 'Internal Server error',
             error
         });
-    }
-
+    };
 };
-
 
 
 // ! Collaborator Propper Data Return based on access level
@@ -425,9 +499,7 @@ export const getProjectLayersDataBaseOnAccess = async(req: Request, res: Respons
             ).map( layer => {  const { gitlabId, __v, ...rest} = layer 
                 return { ...rest, accessLevel: 'guest' } 
             });             
-                        
-                             
-               
+                                   
 
             // Combinar los dos conjuntos de capas y devolverlos.
             req.layers = [...layersBaseOnLevel, ...uniqueOpenLayersWithGuestAccess];

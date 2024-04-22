@@ -23,10 +23,10 @@ const LayerSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Project'
     },
-    repositories: [{
-        type: Schema.Types.ObjectId,
-        ref: 'Repo'
-    }],
+    repositories: {
+        type: Number,
+        default: 0
+    },
     gitlabId: {
         type: Number,
         required: true

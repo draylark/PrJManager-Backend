@@ -4,17 +4,19 @@ import { validateJWT } from '../middlewares/validateJWT';
 import { validateLayerExistance } from '../middlewares/layer-middlewares';
 import { validateProjectExistance, ownerOrCollaborator, validateUserAccessOnProject } from '../middlewares/project-middlewares';
 import { addNewRepoCollaborators } from '../middlewares/collaborators-middlewares';
-import { createRepoOnGitlab, createRepoOnMongoDB, validateCollaboratorAccessOnRepository, verifyTwoAccessLevelOfNewCollaborator, validateRepositoryExistance, 
-    updateRepoCollaborators, newCollaborators, deleteCollaborators, getProjectReposDataBaseOnAccess } from '../middlewares/repository-middlewares';
+import { createRepoOnGitlab, createRepoOnMongoDB, validateCollaboratorAccessOnRepository, verifyLayerAccessLevelOfNewCollaborator, validateRepositoryExistance, 
+    updateRepoCollaborators, newCollaborators, deleteCollaborators, getProjectReposDataBaseOnAccess, verifyProjectLevelAccessOfNewCollaborator, verifyTwoAccessLevelOfCollaborator, verifyLayerRepos } from '../middlewares/repository-middlewares';
 
 const router = Router();
 // CRUD routes
 
-router.post('/', 
+router.post('/create-repository/:projectID/:layerID', 
     [
         validateJWT,
         validateProjectExistance,
         validateLayerExistance,
+        verifyTwoAccessLevelOfCollaborator(['administrator', 'manager']),
+        verifyLayerRepos,
         createRepoOnGitlab,
         createRepoOnMongoDB,
         addNewRepoCollaborators,
@@ -49,7 +51,8 @@ router.put('/update-repository/:projectID/:layerID/:repoID',
         validateCollaboratorAccessOnRepository(['administrator']),
         deleteCollaborators,
         updateRepoCollaborators,
-        verifyTwoAccessLevelOfNewCollaborator,
+        verifyProjectLevelAccessOfNewCollaborator,        
+        verifyLayerAccessLevelOfNewCollaborator,
         newCollaborators
 
         
@@ -69,7 +72,7 @@ router.get('/get-repos/:projectID',
 );
 
 
-
+router.get('/get-layer-repos/:projectID/:layerID', [validateJWT, validateProjectExistance, validateUserAccessOnProject ], repoController.getReposByLayer )
 
 
 // Donde se encontraba antes: 

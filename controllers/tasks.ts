@@ -1,6 +1,7 @@
 import { Response, Request } from 'express'
 import Project from '../models/projectSchema';
 import Task from '../models/taskSchema';
+import Noti from '../models/notisSchema';
 
 
 
@@ -12,13 +13,13 @@ export const createNewTask = async(req: Request, res: Response) => {
 
         return res.json({
             task,
-            msg: 'Task created'
+            message: 'Task created'
         });
 
     } catch (error) {
         console.log(req.body)
         return res.status(400).json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         })
     }
@@ -234,3 +235,131 @@ export const getTasksByProject = async (req: Request, res: Response) => {
     }
 }
 
+
+
+
+export const updateTaskStatus = async(req: Request, res: Response) => {
+
+    const { collaborator, type, owner } = req;
+    const { status, approved } = req.body;
+    const { taskId } = req.params;    
+    const uid = req.query.uid
+
+    try {
+        const task = await Task.findById( taskId );
+
+        if(!task) {
+            return res.status(404).json({message: 'Task not found'});          
+        }
+
+        if( !approved ){
+            if( type === 'owner'){
+                console.log(owner)
+                await Task.updateOne({ _id: taskId }, { status: status, reasons: req.body.reasons });
+                await Promise.all( task.contributorsIds.map( async (contributorId: string) => {
+                    const noti = new Noti({
+                        type: 'task-rejected',
+                        title: 'Task rejected',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been rejected`,
+                        from: {
+                            name: owner.username,
+                            ID: uid,
+                            photoUrl: owner.photoUrl || null
+                        },
+                        recipient: contributorId,
+                        additionalData: {
+                            reasons: req.body.reasons
+                        }
+                    })
+                    await noti.save()
+                }))
+
+                return res.json({
+                    success: true,
+                    message: 'Reasons Subbmited',
+                    type: 'task-rejected'
+                });
+            } else {
+                await Task.updateOne({ _id: taskId }, { status: status, reasons: req.body.reasons })
+
+                await Promise.all( task.contributorsIds.map( async (contributorId: string) => {
+                    const noti = new Noti({
+                        type: 'task-rejected',
+                        title: 'Task rejected',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been rejected`,
+                        from: {
+                            name: collaborator.name,
+                            ID: collaborator.uid,
+                            photoUrl: collaborator.photoUrl || null
+                        },
+                        recipient: contributorId,
+                        additionalData: {
+                            reasons: req.body.reasons
+                        }
+                    })
+                    await noti.save()
+                }))
+
+                return res.json({
+                    success: true,
+                    message: 'Reasons Subbmited',
+                    type: 'task-rejected'
+                });
+            }
+        } else {
+            if( type === 'owner'){
+                console.log(owner)
+                await Task.updateOne({ _id: taskId }, { status: status });
+                
+                await Promise.all( task.contributorsIds.map( async (contributorId: string) => {
+                    const noti = new Noti({
+                        type: 'task-approved',
+                        title: 'Task approved',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been approved`,
+                        from: {
+                            name: owner.username,
+                            ID: uid,
+                            photoUrl: owner.photoUrl || null
+                        },
+                        recipient: contributorId
+                    })
+                    await noti.save()
+                }))
+
+                return res.json({
+                    success: true,
+                    message: 'Task Approved',
+                    type: 'task-approved'
+                });
+            } else {
+                await Task.updateOne({ _id: taskId }, { status: status });        
+                await Promise.all( task.contributorsIds.map( async (contributorId: string) => {
+                    const noti = new Noti({
+                        type: 'task-approved',
+                        title: 'Task approved',
+                        description: `The task "${task.task_name}" with ID ${taskId} has been approved`,
+                        from: {
+                            name: collaborator.name,
+                            ID: collaborator.uid,
+                            photoUrl: collaborator.photoUrl || null
+                        },
+                        recipient: contributorId
+                    })
+                    await noti.save()
+                }))
+
+                return res.json({
+                    success: true,
+                    message: 'Task Approved',
+                    type: 'task-approved'
+                });
+            }
+        }
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error'
+        });
+    };
+}

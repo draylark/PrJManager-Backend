@@ -30,6 +30,10 @@ const collaboratorSchema = new Schema({
         accessLevel: {
             type: String,
             enum: ['reader', 'editor', 'manager', 'administrator'],
+        },
+        layer: {
+            type: Schema.Types.ObjectId,
+            ref: 'Layer'
         }
     },
     projectID: {

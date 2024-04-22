@@ -8,11 +8,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getReposByProject = exports.addRepoCollaborator = exports.addRepoCollaborators = exports.getRepositoriesByUserId = exports.getRepoCollaborators = exports.updateRepos = exports.deleteRepository = exports.updateRepository = exports.getRepositoryById = exports.getRepositories = exports.createRepository = void 0;
+exports.getReposByLayer = exports.getReposByProject = exports.addRepoCollaborator = exports.addRepoCollaborators = exports.getRepositoriesByUserId = exports.getRepoCollaborators = exports.updateRepos = exports.deleteRepository = exports.updateRepository = exports.getRepositoryById = exports.getRepositories = exports.createRepository = void 0;
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const createRepository = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -46,7 +57,9 @@ const getRepositoryById = (req, res) => __awaiter(void 0, void 0, void 0, functi
     try {
         const repository = yield repoSchema_1.default.findById(req.params.id);
         if (repository) {
-            res.status(200).json(repository);
+            res.status(200).json({
+                repo: repository
+            });
         }
         else {
             res.status(404).json({ message: 'Repository not found' });
@@ -59,33 +72,34 @@ const getRepositoryById = (req, res) => __awaiter(void 0, void 0, void 0, functi
 exports.getRepositoryById = getRepositoryById;
 // UPDATE
 const updateRepository = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // const { repoID } = req.params;
-    // const { creatingMiddlewareState, updatingMiddlewareState, deletingMiddlewareState} = req
-    // const { collaborators, modifiedCollaborators, deletedCollaborators, newCollaborators, newDefaultBranch, ...rest } = req.body;        
-    // const message = `${creatingMiddlewareState || updatingMiddlewareState || deletingMiddlewareState ? 
-    //                 `Collaborators and repository updated successfully. ${newDefaultBranch ? 'Default branch changed.' : ''}`  : 
-    //                 'Repository updated successfully'} ${newDefaultBranch ? ' and default branch changed.' : ''}   
-    // `
-    // try {
-    //     if( newDefaultBranch !== null ){
-    //         const repository = await Repo.findByIdAndUpdate(repoID, {...rest, defaultBranch: newDefaultBranch }, { new: true });
-    //         res.status(200).json({
-    //             success: true,
-    //             message,
-    //             repository
-    //         });
-    //     } else {
-    //         const repository = await Repo.findByIdAndUpdate(repoID, rest, { new: true });
-    res.status(200).json({
-        success: true,
-        message: 'Repository updated successfully'
-        // message,
-        // repository
-    });
-    // }        
-    // } catch (error) {
-    //     return res.status(500).json({ message: error.message });
-    // }
+    const { repoID } = req.params;
+    const { creatingMiddlewareState, updatingMiddlewareState, deletingMiddlewareState } = req;
+    const _a = req.body, { collaborators, modifiedCollaborators, deletedCollaborators, newCollaborators, newDefaultBranch } = _a, rest = __rest(_a, ["collaborators", "modifiedCollaborators", "deletedCollaborators", "newCollaborators", "newDefaultBranch"]);
+    const message = `${creatingMiddlewareState || updatingMiddlewareState || deletingMiddlewareState ?
+        `Collaborators and repository updated successfully. ${newDefaultBranch ? 'Default branch changed.' : ''}` :
+        'Repository updated successfully'} ${newDefaultBranch ? ' and default branch changed.' : ''}   
+    `;
+    try {
+        if (newDefaultBranch !== null) {
+            const repository = yield repoSchema_1.default.findByIdAndUpdate(repoID, Object.assign(Object.assign({}, rest), { defaultBranch: newDefaultBranch }), { new: true });
+            res.status(200).json({
+                success: true,
+                message,
+                repository
+            });
+        }
+        else {
+            const repository = yield repoSchema_1.default.findByIdAndUpdate(repoID, rest, { new: true });
+            res.status(200).json({
+                success: true,
+                message,
+                repository
+            });
+        }
+    }
+    catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
 });
 exports.updateRepository = updateRepository;
 // DELETE
@@ -265,4 +279,30 @@ const getReposByProject = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.getReposByProject = getReposByProject;
+const getReposByLayer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { layerID } = req.params;
+    const { owner, repos } = req;
+    try {
+        if (owner && owner === true) {
+            const repos = yield repoSchema_1.default.find({ layerID });
+            res.status(200).json({
+                success: true,
+                repos
+            });
+        }
+        else {
+            res.status(200).json({
+                success: true,
+                repos
+            });
+        }
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+exports.getReposByLayer = getReposByLayer;
 //# sourceMappingURL=repos.js.map

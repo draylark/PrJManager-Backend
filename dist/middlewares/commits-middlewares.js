@@ -8,12 +8,24 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getProjectCommitsBaseOnAccess = exports.findCommit = void 0;
 const commitSchema_1 = __importDefault(require("../models/commitSchema"));
+const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const findCommit = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { hash } = req.params;
     try {
@@ -32,8 +44,9 @@ const findCommit = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
 exports.findCommit = findCommit;
 const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
-    const { levels, owner } = req;
+    const { levels, owner, type } = req;
     const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const uid = req.query.uid;
     if (owner && owner === true) {
         return next();
     }
@@ -45,21 +58,51 @@ const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void
             } });
     }
     try {
-        const commits = yield commitSchema_1.default.find(matchConditions)
-            .populate('layer repository');
-        const filteredCommitsBaseOnLevel = commits.reduce((acc, commit) => {
-            const { layer, repository } = commit;
-            // Verifica que ambos documentos estén poblados y tienen propiedad 'visibility'.
-            if (layer && repository && levels.includes(layer.visibility) && levels.includes(repository.visibility)) {
-                // Crea una nueva representación de la tarea que solo incluye los ObjectIds de los documentos relacionados.
-                const commitWithIdsOnly = Object.assign(Object.assign({}, commit.toObject()), { layer: layer._id, repository: repository._id });
-                acc.push(commitWithIdsOnly);
-            }
-            ;
-            return acc;
-        }, []);
-        req.commits = filteredCommitsBaseOnLevel;
-        next();
+        if (type === 'collaborator') {
+            const commits = yield commitSchema_1.default.find(matchConditions)
+                .populate('layer repository associated_task')
+                .lean();
+            const filteredCommitsBaseOnLevel = (yield Promise.all(commits.map((commit) => __awaiter(void 0, void 0, void 0, function* () {
+                const { layer, repository } = commit;
+                const cLayer = yield collaboratorSchema_1.default.findOne({ uid, projectID, state: true, 'layer._id': layer._id });
+                const cRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, state: true, 'repository._id': repository._id });
+                if (cLayer && cRepo) {
+                    const commitWithIdsOnly = Object.assign(Object.assign({}, commit), { layer: layer._id, repository: repository._id });
+                    return commitWithIdsOnly;
+                }
+            })))).filter(commit => commit !== undefined);
+            const uniqueCommitsOnOpenParents = (yield Promise.all(commits.filter(openCommit => !filteredCommitsBaseOnLevel.some(commit => commit._id.toString() === openCommit._id.toString())).map((commit) => __awaiter(void 0, void 0, void 0, function* () {
+                const { layer: { _id: layerId, visibility: layerVis }, repository: { _id: repoId, visibility: repoVis } } = commit, rest = __rest(commit, ["layer", "repository"]);
+                const cLayer = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'layer._id': layerId });
+                const cRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'repository._id': repoId });
+                if (evalAccess(cLayer, cRepo, layerVis, repoVis)) {
+                    return Object.assign(Object.assign({}, rest), { layer: layerId, repository: repoId });
+                }
+                ;
+            })))).filter(commit => commit !== undefined);
+            console.log('filteredCommitsBaseOnLevel', filteredCommitsBaseOnLevel);
+            req.commits = [...filteredCommitsBaseOnLevel, ...uniqueCommitsOnOpenParents];
+            return next();
+        }
+        else {
+            const commits = yield commitSchema_1.default.find(matchConditions)
+                .populate('layer repository associated_task')
+                .lean();
+            const filteredCommitsBaseOnLevel = commits.reduce((acc, commit) => {
+                const { layer, repository } = commit;
+                // Verifica que ambos documentos estén poblados y tienen propiedad 'visibility'.
+                if (layer && repository && levels.includes(layer.visibility) && levels.includes(repository.visibility)) {
+                    // Crea una nueva representación de la tarea que solo incluye los ObjectIds de los documentos relacionados.
+                    const commitWithIdsOnly = Object.assign(Object.assign({}, commit), { layer: layer._id, repository: repository._id });
+                    acc.push(commitWithIdsOnly);
+                }
+                ;
+                return acc;
+            }, []);
+            req.commits = filteredCommitsBaseOnLevel;
+            return next();
+        }
+        ;
     }
     catch (error) {
         console.log(error);
@@ -70,4 +113,13 @@ const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void
     }
 });
 exports.getProjectCommitsBaseOnAccess = getProjectCommitsBaseOnAccess;
+const evalAccess = (cOnLayer, cOnRepo, lVisibility, RVisibility) => {
+    if (cOnLayer && cOnRepo && cOnLayer.state && !cOnRepo.state && RVisibility === 'open') {
+        return true;
+    }
+    if (cOnLayer && cOnRepo && !cOnLayer.state && lVisibility === 'open' && !cOnRepo.state && RVisibility === 'open') {
+        return true;
+    }
+    return false;
+};
 //# sourceMappingURL=commits-middlewares.js.map

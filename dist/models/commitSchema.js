@@ -53,6 +53,11 @@ const CommitSchema = new mongoose_1.Schema({
     uuid: {
         type: String,
         required: true
+    },
+    associated_task: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Task',
+        required: true
     }
 }, { timestamps: true });
 const Commit = (0, mongoose_1.model)('Commit', CommitSchema);

@@ -4,7 +4,7 @@ import { Schema, model } from "mongoose";
 const NotisSchema = new Schema({
     type: {
       type: String,
-      enum: ['task-assignation', 'friend-request', 'project-invitation', 'new-repo', 'new-layer', 'new-commit'],
+      enum: [ 'friend-request', 'project-invitation', 'new-repo', 'new-layer', 'new-commit', 'task-approved', 'task-assignation', 'task-rejected' ],
       required: true
     },
     title: {

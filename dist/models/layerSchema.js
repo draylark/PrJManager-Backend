@@ -24,10 +24,10 @@ const LayerSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Project'
     },
-    repositories: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Repo'
-        }],
+    repositories: {
+        type: Number,
+        default: 0
+    },
     gitlabId: {
         type: Number,
         required: true

@@ -52,6 +52,11 @@ const CommitSchema = new Schema({
     uuid: {
         type: String,
         required: true
+    },
+    associated_task: {
+        type: Schema.Types.ObjectId,
+        ref: 'Task',
+        required: true
     }
 }, { timestamps: true });
 

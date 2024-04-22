@@ -22,13 +22,17 @@ const validateJWT = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
     if (!token) {
         return res.status(400).json({
             state: false,
-            message: 'No hay token un token valido en la peticion'
+            success: false,
+            message: 'No hay token un token valido en la peticion',
+            type: 'no-token'
         });
     }
     if (token === undefined) {
         return res.status(400).json({
             state: false,
-            message: 'No hay token un token valido en la peticion'
+            success: false,
+            message: 'No hay token un token valido en la peticion',
+            type: 'no-token'
         });
     }
     try {
@@ -41,7 +45,9 @@ const validateJWT = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
         if (!user)
             return res.status(401).json({
                 state: false,
-                message: 'The user does not exist'
+                success: false,
+                message: 'The user does not exist',
+                type: 'user-validation'
             });
         req.authenticatedUser = user;
         req.user = user;
@@ -51,7 +57,9 @@ const validateJWT = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
     catch (error) {
         return res.status(401).json({
             state: false,
-            message: 'Token not valid / User not authorized'
+            success: false,
+            message: 'Token not valid',
+            type: 'token-validation'
         });
     }
 });

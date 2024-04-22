@@ -30,6 +30,10 @@ const collaboratorSchema = new mongoose_1.Schema({
         accessLevel: {
             type: String,
             enum: ['reader', 'editor', 'manager', 'administrator'],
+        },
+        layer: {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Layer'
         }
     },
     projectID: {

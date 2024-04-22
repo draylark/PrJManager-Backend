@@ -39,7 +39,7 @@ const project_middlewares_2 = require("../middlewares/project-middlewares");
 const tasks_middlewares_1 = require("../middlewares/tasks-middlewares");
 const router = (0, express_1.Router)();
 router.get('/get-all-tasks/:id', tasksController.getTask);
-router.post('/', [], tasksController.createNewTask);
+router.post('/:projectID/:layerID/:repoID', [], tasksController.createNewTask);
 router.put('/:id', [
     (0, express_validator_1.check)('id', 'No es un ID valido').isMongoId(),
     (0, express_validator_1.check)('id').custom(dvValidators_1.isIdExist)
@@ -59,5 +59,10 @@ router.get('/activity-data/:projectID', [validateJWT_1.validateJWT, project_midd
     project_middlewares_1.validateUserAccessOnProject,
     tasks_middlewares_1.getProjectTasksBaseOnAccess
 ], tasksController.getTasksByProject);
+router.put('/update-task-status/:projectID/:taskId', [
+    validateJWT_1.validateJWT,
+    project_middlewares_2.validateProjectExistance,
+    (0, tasks_middlewares_1.validateCollaboratorAccess)(['coordinator', 'administrator'])
+], tasksController.updateTaskStatus);
 exports.default = router;
 //# sourceMappingURL=tasksR.js.map

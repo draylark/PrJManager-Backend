@@ -7,7 +7,7 @@ import { isPrIdExist } from "../helpers/dvValidators";
 import { validateJWT } from "../middlewares/validateJWT";
 import { validateProjectExistance, validateCollaboratorAccessOnProject, newCollaborators, updateCollaborators, deleteCollaborators, 
         updateOtherCollaboratorDataOfDeletedCollaborators, updateOtherCDataOfProjectModifiedCollaborators, createOtherCDataOfProjectCreatedCollaborators, 
-        handlePrJCollaboratorInvitation, returnDataBaseOnAccessLevel } from '../middlewares/project-middlewares';
+        handlePrJCollaboratorInvitation, itIsTheOwner } from '../middlewares/project-middlewares';
 
 
 const router = Router()
@@ -33,7 +33,7 @@ router.put('/update-project/:projectID',
         [ 
             validateJWT,
             validateProjectExistance,
-            validateCollaboratorAccessOnProject( ['manager', 'administrator'] )
+            itIsTheOwner
         ],       
         prjController.updateProject);
 

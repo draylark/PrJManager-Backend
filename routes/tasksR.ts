@@ -7,16 +7,17 @@ import { isIdExist } from '../helpers/dvValidators';
 import validarCampos from '../middlewares/validar-campos';
 import { validateRepositoryExistance } from '../middlewares/DB-validators';
 import { validateJWT } from '../middlewares/validateJWT';
-import { validateUserAccessOnProject } from '../middlewares/project-middlewares';
+import { validateUserAccessOnProject, validateCollaboratorAccessOnProject } from '../middlewares/project-middlewares';
 import { validateProjectExistance } from '../middlewares/project-middlewares';
-import { getProjectTasksBaseOnAccess, getProjectTasksBaseOnAccessForHeatMap } from '../middlewares/tasks-middlewares';
+import { getProjectTasksBaseOnAccess, getProjectTasksBaseOnAccessForHeatMap, validateCollaboratorAccess } from '../middlewares/tasks-middlewares';
+import { validateCollaboratorAccessOnLayer } from '../middlewares/layer-middlewares';
 
 const router = Router()
 
 
 router.get('/get-all-tasks/:id', tasksController.getTask);
 
-router.post('/', [
+router.post('/:projectID/:layerID/:repoID', [
 ], tasksController.createNewTask);
 
 router.put('/:id', [
@@ -31,6 +32,8 @@ router.delete('/:id', [
     showRole('ADMIN_ROLE', 'VENTAS_ROLE'),
 ], tasksController.deleteTask);
 
+
+
 router.get('/:repoID', [ validateJWT, validateRepositoryExistance ], tasksController.getTasksByRepo);
 
 router.get('/activity/:projectID',[ validateJWT, validateProjectExistance,
@@ -42,6 +45,14 @@ router.get('/activity-data/:projectID', [ validateJWT, validateProjectExistance,
                                           validateUserAccessOnProject, 
                                           getProjectTasksBaseOnAccess 
                                         ], tasksController.getTasksByProject);
+
+
+
+router.put('/update-task-status/:projectID/:taskId', [ 
+        validateJWT, 
+        validateProjectExistance,
+        validateCollaboratorAccess(['coordinator', 'administrator'])
+    ], tasksController.updateTaskStatus);
 
 
 

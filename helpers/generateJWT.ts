@@ -21,7 +21,7 @@ export const generateJWT = ( uid: string, state: boolean ) => {
 
             payload,  
             privateKey, 
-            { algorithm: 'RS256', expiresIn: "2hr" },
+            { algorithm: 'RS256', expiresIn: "5hr" },
             ( err, token ) => {
                 if( err ){
                 console.log(err) 

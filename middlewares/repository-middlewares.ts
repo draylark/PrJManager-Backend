@@ -2,15 +2,18 @@ import { Request, Response, NextFunction } from 'express';
 import Collaborator from '../models/collaboratorSchema';
 import Repo from '../models/repoSchema';
 import axios from 'axios';
+import Layer from '../models/layerSchema';
+import Project from '../models/projectSchema';
+import { whatIsTheAccess } from './project-middlewares';
 
 
 
 export const createRepoOnGitlab = async (req: Request, res: Response, next: NextFunction) => {
-    const { gitlabGroupID } = req;
+    const { layer } = req;
   
     try {
       const permanentVsibility = 'private';
-      const accessToken = process.env.CREATE_REPOS
+      const accessToken = process.env.IDK
       
       // Generar un nombre de repositorio único
       const uniqueSuffix = Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -20,7 +23,7 @@ export const createRepoOnGitlab = async (req: Request, res: Response, next: Next
       const response = await axios.post(`https://gitlab.com/api/v4/projects`, {
         name: repoName,
         visibility: permanentVsibility,
-        namespace_id: gitlabGroupID, // ID del grupo donde se creará el repositorio
+        namespace_id: layer.gitlabId, // ID del grupo donde se creará el repositorio
       }, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -41,7 +44,8 @@ export const createRepoOnGitlab = async (req: Request, res: Response, next: Next
 
 export const createRepoOnMongoDB = async (req: Request, res: Response, next: NextFunction) => {
 
-    const { name, visibility, description, projectID, layerID, uid } = req.body;
+    const { projectID, layerID } = req.params;
+    const { name, visibility, description, uid } = req.body;
     const { repo } = req;
 
     try {
@@ -54,11 +58,16 @@ export const createRepoOnMongoDB = async (req: Request, res: Response, next: Nex
       webUrl: repo.web_url, 
       projectID,
       layerID, 
-      repoGitlabId: repo.id, 
+      gitlabId: repo.id, 
       creator: uid,
+      defaultBranch: repo.default_branch
     });
 
     await newRepo.save();
+
+    await Project.findByIdAndUpdate(projectID, { $inc: { repositories: 1 } }, { new: true });
+    await Layer.findByIdAndUpdate(layerID, { $inc: { repositories: 1 } }, { new: true });
+
 
     console.log('Repositorio creado en MongoDB', newRepo)
 
@@ -126,8 +135,41 @@ export const validateCollaboratorAccessOnRepository = ( minAccess ) => {
       next()
   };
 };
+export const verifyLayerAccessLevelOfNewCollaborator = async (req: Request, res: Response, next: NextFunction) => {
+  const { projectID, layerID } = req.params;
+  const { newCollaborators } = req.body;
 
-export const verifyTwoAccessLevelOfNewCollaborator = async (req: Request, res: Response, next: NextFunction) => {
+  if (newCollaborators.length === 0) {
+    return next();
+  };
+
+  for (const collaborator of newCollaborators) {
+    const { id, photoUrl, name } = collaborator;
+    
+    // Comprobar y actualizar o insertar para la capa
+    const layerCollaborator = await Collaborator.findOne({ uid: id, projectID, 'layer._id': layerID });
+    if (layerCollaborator) {
+      if (!layerCollaborator.state) {
+        layerCollaborator.layer.accessLevel = 'contributor'; // Actualizar el nivel de acceso a colaborador
+        layerCollaborator.state = true; // Actualizar el estado a true
+        await layerCollaborator.save(); // Guardar el documento actualizado
+      }
+    } else {
+        // Crear nuevo documento para la capa si no existe
+        await Collaborator.create({
+          projectID,
+          uid: id,
+          name,
+          photoUrl,
+          layer: { _id: layerID, accessLevel: 'contributor' },
+          state: true
+        });
+    }
+  };
+
+  next();
+};
+export const verifyProjectLevelAccessOfNewCollaborator = async (req: Request, res: Response, next: NextFunction) => {
   const { projectID, layerID } = req.params;
   const { newCollaborators } = req.body;
 
@@ -135,49 +177,69 @@ export const verifyTwoAccessLevelOfNewCollaborator = async (req: Request, res: R
     return next();
   }
 
-  console.log('Nuevos colaboradores', newCollaborators);
-
   for (const collaborator of newCollaborators) {
-    const { id, photoUrl, name } = collaborator;
-
+    const { id } = collaborator;
     // Comprobar y actualizar o insertar para el proyecto
-    const prjCollaborator = await Collaborator.findOne({ uid: id, projectID, 'project._id': projectID });
-    if (prjCollaborator) {
-      if (!prjCollaborator.state) {
-        prjCollaborator.state = true; // Actualizar el estado a true
-        await prjCollaborator.save(); // Guardar el documento actualizado
-      }
-    } else {
-      // Crear nuevo documento para el proyecto si no existe
-      await Collaborator.create({
-        uid: id,
-        name,
-        photoUrl,
-        project: { _id: projectID, accessLevel: 'contributor' },
-        state: true
+    const prjCollaborator = await Collaborator.findOne({ uid: id, state: true, projectID, 'project._id': projectID });
+    if (!prjCollaborator) {
+      return res.status(400).json({
+          success: false,
+          message: 'The collaborator(s) has not been found at the project level, to add a collaborator at the repository level, this must be a collaborator at the project level first.'
       });
-    }
-
-    // Comprobar y actualizar o insertar para la capa
-    const layerCollaborator = await Collaborator.findOne({ uid: id, projectID, 'layer._id': layerID });
-    if (layerCollaborator) {
-      if (!layerCollaborator.state) {
-        layerCollaborator.state = true; // Actualizar el estado a true
-        await layerCollaborator.save(); // Guardar el documento actualizado
-      }
-    } else {
-      // Crear nuevo documento para la capa si no existe
-      await Collaborator.create({
-        uid: id,
-        name,
-        photoUrl,
-        layer: { _id: layerID, accessLevel: 'contributor' },
-        state: true
-      });
-    }
+    } 
   }
-
   next();
+};
+
+export const verifyTwoAccessLevelOfCollaborator = (minAccess: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const { projectID, layerID } = req.params
+    const { uid } = req.query
+    const { project } = req
+
+    if( project.owner.toString() === uid ){
+      return next()
+    }
+
+    const cOnProject = await Collaborator.findOne({ projectID, uid, state: true, 'project._id': projectID }).lean()
+
+    if( cOnProject && minAccess.includes( cOnProject.project.accessLevel) ){
+      return next()
+    }
+
+    const cOnLayer = await Collaborator.findOne({ projectID, uid, state: true, 'layer._id': layerID }).lean()
+
+    if( cOnLayer && minAccess.includes( cOnLayer.layer.accessLevel) ){
+      return next()
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: 'You do not have the required access level to perform this action',
+      type: 'collaborator-validation'
+    })
+  };
+};
+
+export const verifyLayerRepos = async(req: Request, res: Response, next: NextFunction) => {
+  const { layer } = req
+
+  try {
+      if( layer && layer?.repositories >= 3 ){
+          return res.status(400).json({
+              success: false,
+              message: 'The layer has reached the maximum number of repositories',
+              type: 'repos-limit'
+          });
+      }
+      next();
+  } catch (error) {
+      console.log('error', error)
+      res.status(400).json({
+          message: 'Internal Server error',
+          error
+      });
+  };
 };
 
 
@@ -211,8 +273,8 @@ export const updateRepoCollaborators = async(req: Request, res: Response, next: 
 
 // ! Creation / Updating
 export const newCollaborators = async(req: Request, res: Response, next: NextFunction) => {
-    
-  const { repoID } = req.params
+  
+  const { repoID, projectID } = req.params
   const { newCollaborators } = req.body
 
   if( newCollaborators.length === 0 ) {
@@ -222,6 +284,10 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
 
   let totalCreated = 0;
 
+  console.log('newCollaborators en el')
+  console.log('newCollaborators', newCollaborators)
+  console.log('projectID', projectID)
+
   try {
 
       const processCollaborator = async (collaborator) => {
@@ -230,12 +296,12 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
 
           if (existingCollaborator) {
               if (!existingCollaborator.state) {
-                  await Collaborator.updateOne({ _id: existingCollaborator._id, 'repository._id': repoID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'repository.accessLevel': accessLevel } });
+                  await Collaborator.updateOne({ projectID, _id: existingCollaborator._id, 'repository._id': repoID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'repository.accessLevel': accessLevel } });
                   totalCreated++;
               }
               // Si el colaborador existe y ya está activo, no aumentar totalCreated.
           } else {
-              const c = new Collaborator({ uid: id, name, photoUrl, layer: { _id: repoID, accessLevel }, state: true });
+              const c = new Collaborator({ projectID, uid: id, name,  photoUrl, repository: { _id: repoID, accessLevel }, state: true });
               await c.save();
               totalCreated++;
           }
@@ -270,6 +336,7 @@ export const deleteCollaborators = async(req: Request, res: Response, next: Next
       return next()
   }
 
+  
   try {
         const results = await Promise.all(deletedCollaborators.map(id => {
             return Collaborator.updateMany({ uid: id, 'repository._id': repoID }, { $set: { state: false } });
@@ -301,8 +368,11 @@ export const getProjectReposDataBaseOnAccess = async(req: Request, res: Response
       return next();
   }
 
+  console.log('Niveles', levels)
+
   try {
     if( type === 'collaborator'){
+      console.log('Niveles del collaborator',levels)
         const collaboratorOnRepos = await Collaborator.find({ projectID, uid, state: true, 'repository._id': { $exists: true } })
                                           .lean()
                                           .populate({
@@ -316,9 +386,29 @@ export const getProjectReposDataBaseOnAccess = async(req: Request, res: Response
           return { ...rest, visibility, layerID: layerID._id, accessLevel };
         });
 
-        req.repos = reposBaseOnLevel
+
+        const openRepos = await Repo.find({ projectID, visibility: 'open' })
+                                .populate('layerID')
+                                .lean();
+
+
+                        console.log('openRepos', openRepos)
+
+        const uniqueOpenReposWithGuestAccess = openRepos.filter( openRepo => 
+          !reposBaseOnLevel.some(repo => repo._id.toString() === openRepo._id.toString())).map( repo => {                 
+            const { layerID: { _id, visibility }, gitUrl, webUrl, gitlabId, ...rest} = repo 
+            if( visibility === 'open' ){
+              return { ...rest, layerID: _id, accessLevel: 'guest' }
+            }
+          }).filter( repo => repo !== undefined )   
+
+          console.log('uniqueOpenReposWithGuestAccess', uniqueOpenReposWithGuestAccess)
+
+
+        req.repos = [ ...reposBaseOnLevel, ...uniqueOpenReposWithGuestAccess ];
         return next()
     } else {
+      console.log('Niveles del guest',levels)
         const repos = await Repo.find({ projectID, visibility: { $in: levels } })
                             .lean()
                             .populate('layerID')

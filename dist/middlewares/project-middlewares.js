@@ -12,18 +12,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.returnDataBaseOnAccessLevel = exports.updateOtherCollaboratorDataOfDeletedCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfProjectModifiedCollaborators = exports.updateCollaborators = exports.handlePrJCollaboratorInvitation = exports.createOtherCDataOfProjectCreatedCollaborators = exports.newCollaborators = exports.ownerOrCollaborator = exports.validateCollaboratorAccessOnProject = exports.validateUserAccessOnProject = exports.validateProjectExistance = exports.whatIsTheAccess = void 0;
+exports.returnDataBaseOnAccessLevel = exports.updateOtherCollaboratorDataOfDeletedCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfProjectModifiedCollaborators = exports.updateCollaborators = exports.handlePrJCollaboratorInvitation = exports.createOtherCDataOfProjectCreatedCollaborators = exports.newCollaborators = exports.itIsTheOwner = exports.ownerOrCollaborator = exports.validateCollaboratorAccessOnProject = exports.validateUserAccessOnProject = exports.validateProjectExistance = exports.whatIsTheAccess = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const layerSchema_1 = __importDefault(require("../models/layerSchema"));
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const notisSchema_1 = __importDefault(require("../models/notisSchema"));
+const userSchema_1 = __importDefault(require("../models/userSchema"));
 // ! Middlewares Helpers
 const whatIsTheAccess = (accessLevel) => {
     switch (accessLevel) {
-        case 'contributor':
+        case 'guest':
             return {
                 levels: ['open'],
+            };
+        case 'contributor':
+            return {
+                levels: ['open', 'internal'],
             };
         case 'coordinator':
             return {
@@ -74,12 +79,16 @@ const appropiateLevelAccessOnRepo = (accessLevel) => {
 const validateProjectExistance = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const project = yield projectSchema_1.default.findById(projectID);
+    const owner = yield userSchema_1.default.findById(project === null || project === void 0 ? void 0 : project.owner);
     if (!project) {
         return res.status(400).json({
-            message: 'Project does not exist'
+            success: false,
+            message: 'Project does not exist',
+            type: 'project-validation'
         });
     }
     req.project = project;
+    req.owner = owner;
     next();
 });
 exports.validateProjectExistance = validateProjectExistance;
@@ -95,6 +104,7 @@ const validateUserAccessOnProject = (req, res, next) => __awaiter(void 0, void 0
         const collaborator = yield collaboratorSchema_1.default.findOne({ uid, 'project._id': project._id, state: true });
         if (!collaborator) {
             req.type = 'guest';
+            req.owner = false;
             req.levels = ['open'];
             return next();
         }
@@ -121,15 +131,19 @@ const validateCollaboratorAccessOnProject = (minAccess) => {
         if (project.owner.toString() === uid) {
             return next();
         }
-        const collaborator = yield collaboratorSchema_1.default.findOne({ uid, 'project._id': projectID });
+        const collaborator = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'project._id': projectID });
         if (!collaborator) {
             return res.status(400).json({
-                message: 'You do not have access to this project'
+                success: false,
+                message: 'You do not have access to this project',
+                type: 'collaborator-validation'
             });
         }
         if (!minAccess.includes(collaborator.project.accessLevel)) {
             return res.status(400).json({
-                message: 'You do not have the required access level to perform this action'
+                success: false,
+                message: 'You do not have the required access level to perform this action',
+                type: 'collaborator-validation'
             });
         }
         next();
@@ -163,6 +177,28 @@ const ownerOrCollaborator = (req, res, next) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.ownerOrCollaborator = ownerOrCollaborator;
+const itIsTheOwner = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { project } = req;
+    const { uid } = req.query;
+    try {
+        if (project.owner.toString() !== uid) {
+            return res.status(400).json({
+                success: false,
+                message: 'You do not have the required access level to perform this action',
+                type: 'collaborator-validation'
+            });
+        }
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.itIsTheOwner = itIsTheOwner;
 // ! Collaborators Creation
 const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
@@ -208,36 +244,40 @@ const createOtherCDataOfProjectCreatedCollaborators = (req, res, next) => __awai
     }
     try {
         const layers = yield layerSchema_1.default.find({ project: projectID, 'visibility': { $exists: true } });
-        const repos = yield repoSchema_1.default.find({ projectID: projectID, 'visibility': { $exists: true } });
+        const repos = yield repoSchema_1.default.find({ projectID: projectID, 'visibility': { $exists: true } })
+            .populate('layerID');
         yield Promise.all(layers.map((layer) => __awaiter(void 0, void 0, void 0, function* () {
             const { levels } = (0, exports.whatIsTheAccess)(accessLevel);
-            let existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid, 'layer._id': layer._id });
+            let existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'layer._id': layer._id });
             if (existingCollaborator && !existingCollaborator.state) {
                 if (levels.includes(layer.visibility)) {
-                    yield collaboratorSchema_1.default.updateOne({ uid, 'layer._id': layer._id }, { $set: { state: true, 'layer.accessLevel': appropiateLevelAccessOnLayer(accessLevel) } });
+                    yield collaboratorSchema_1.default.updateOne({ uid, projectID, 'layer._id': layer._id }, { $set: { state: true, 'layer.accessLevel': appropiateLevelAccessOnLayer(accessLevel) } });
                 }
             }
             else {
                 // Crear el colaborador en la capa si tiene acceso
                 if (levels.includes(layer.visibility)) {
-                    const c = new collaboratorSchema_1.default({ uid, name, photoUrl, layer: { _id: layer._id, accessLevel: appropiateLevelAccessOnLayer(accessLevel) }, state: true });
+                    console.log('Creando nuevo colaborador en capa');
+                    const c = new collaboratorSchema_1.default({ uid, name, photoUrl, projectID, layer: { _id: layer._id, accessLevel: appropiateLevelAccessOnLayer(accessLevel) }, state: true });
                     yield c.save();
                 }
             }
             ;
         })));
         yield Promise.all(repos.map((repo) => __awaiter(void 0, void 0, void 0, function* () {
+            const { layerID: { visibility } } = repo;
             const { levels } = (0, exports.whatIsTheAccess)(accessLevel);
             // Crear el colaborador en el repositorio si tiene acceso
-            let existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid, 'repository._id': repo._id });
+            let existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'repository._id': repo._id });
             if (existingCollaborator && !existingCollaborator.state) {
-                if (levels.includes(repo.visibility)) {
-                    yield collaboratorSchema_1.default.updateOne({ uid, 'repository._id': repo._id }, { $set: { state: true, 'repository.accessLevel': appropiateLevelAccessOnRepo(accessLevel) } });
+                if (levels.includes(repo.visibility) && levels.includes(visibility)) {
+                    yield collaboratorSchema_1.default.updateOne({ uid, projectID, 'repository._id': repo._id }, { $set: { state: true, 'repository.accessLevel': appropiateLevelAccessOnRepo(accessLevel) } });
                 }
             }
             else {
-                if (levels.includes(repo.visibility)) {
-                    const c = new collaboratorSchema_1.default({ uid, name, photoUrl, repository: { _id: repo._id, accessLevel: appropiateLevelAccessOnRepo(accessLevel) }, state: true });
+                if (levels.includes(repo.visibility) && levels.includes(visibility)) {
+                    console.log('Creando nuevo colaborador en repo');
+                    const c = new collaboratorSchema_1.default({ uid, name, projectID, photoUrl, repository: { _id: repo._id, accessLevel: appropiateLevelAccessOnRepo(accessLevel) }, state: true });
                     yield c.save();
                 }
             }
@@ -257,18 +297,19 @@ exports.createOtherCDataOfProjectCreatedCollaborators = createOtherCDataOfProjec
 const handlePrJCollaboratorInvitation = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const { uid, name, photoUrl, accessLevel, notiID, requestStatus } = req.body;
+    console.log(req.body);
     try {
         if (requestStatus === 'accept') {
             const existingCollaborator = yield collaboratorSchema_1.default.findOne({ uid, 'project._id': projectID });
             if (existingCollaborator) {
                 if (!existingCollaborator.state) {
-                    yield collaboratorSchema_1.default.updateOne({ uid, 'project._id': projectID }, { $set: { state: true, name, photoUrl, 'project.accessLevel': accessLevel } });
+                    yield collaboratorSchema_1.default.updateOne({ uid, projectID, 'project._id': projectID }, { $set: { state: true, name, photoUrl, 'project.accessLevel': accessLevel } });
                     yield notisSchema_1.default.findByIdAndUpdate(notiID, { status: false });
                     return next();
                 }
             }
             else {
-                const c = new collaboratorSchema_1.default({ uid, name, photoUrl, project: { _id: projectID, accessLevel }, state: true });
+                const c = new collaboratorSchema_1.default({ uid, name, photoUrl, projectID, project: { _id: projectID, accessLevel }, state: true });
                 yield c.save();
                 return next();
             }
@@ -328,7 +369,8 @@ const updateOtherCDataOfProjectModifiedCollaborators = (req, res, next) => __awa
             : yield layerSchema_1.default.find({ project: projectID, 'visibility': { $exists: true } });
         const repos = projectRepos.length !== 0
             ? projectRepos
-            : yield repoSchema_1.default.find({ projectID: projectID, 'visibility': { $exists: true } });
+            : yield repoSchema_1.default.find({ projectID: projectID, 'visibility': { $exists: true } })
+                .populate('layerID');
         // Actualizar los colaboradores en las capas y repositorios
         yield Promise.all(modifiedCollaborators.map((collaborator) => __awaiter(void 0, void 0, void 0, function* () {
             const { levels } = (0, exports.whatIsTheAccess)(collaborator.accessLevel);
@@ -365,23 +407,17 @@ const updateOtherCDataOfProjectModifiedCollaborators = (req, res, next) => __awa
         })));
         yield Promise.all(modifiedCollaborators.map((collaborator) => __awaiter(void 0, void 0, void 0, function* () {
             const { levels } = (0, exports.whatIsTheAccess)(collaborator.accessLevel);
-            // Asumiendo que `Layer` y `Repo` son los modelos de las capas y repositorios, respectivamente
             yield Promise.all(repos.map((repo) => __awaiter(void 0, void 0, void 0, function* () {
                 const existingCollaborator = yield collaboratorSchema_1.default.findOne({ 'repository._id': repo._id, uid: collaborator.id })
                     .populate({
                     path: 'repository._id',
                     populate: { path: 'layerID' }
                 });
-                const { _id: { layerID } } = existingCollaborator.repository;
-                if (!levels.includes(repo.visibility) || !levels.includes(layerID.visibility)) {
+                const { visibility: layerVisibility } = repo.layerID;
+                if (!levels.includes(repo.visibility) || !levels.includes(layerVisibility)) {
                     if (existingCollaborator) {
-                        console.log('Niveles', levels);
-                        console.log('Colaborador', existingCollaborator);
-                        console.log('Visualizacion de capa', layerID);
-                        console.log('Repositorio', repo);
                         yield collaboratorSchema_1.default.updateOne({ _id: existingCollaborator._id }, { $set: { state: false } });
                     }
-                    // No hacer nada si no existe porque el colaborador no debería tener acceso
                 }
                 else {
                     if (existingCollaborator) {
@@ -396,8 +432,7 @@ const updateOtherCDataOfProjectModifiedCollaborators = (req, res, next) => __awa
                             uid: collaborator.id,
                             name: collaborator.name,
                             photoUrl: collaborator.photoUrl || null,
-                            state: true // Asumiendo que quieres que el estado sea true por defecto
-                            // Añade otros campos requeridos según tu esquema de colaborador
+                            state: true
                         });
                         yield newCollaborator.save();
                     }

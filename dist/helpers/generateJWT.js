@@ -15,7 +15,7 @@ const generateJWT = (uid, state) => {
         if (!privateKey) {
             throw new Error('SECRET_KEY environment is not defined');
         }
-        jsonwebtoken_1.default.sign(payload, privateKey, { algorithm: 'RS256', expiresIn: "2hr" }, (err, token) => {
+        jsonwebtoken_1.default.sign(payload, privateKey, { algorithm: 'RS256', expiresIn: "5hr" }, (err, token) => {
             if (err) {
                 console.log(err);
                 reject('No se pudo generar el token');
