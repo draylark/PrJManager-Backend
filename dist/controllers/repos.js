@@ -66,6 +66,7 @@ const getRepositoryById = (req, res) => __awaiter(void 0, void 0, void 0, functi
         }
     }
     catch (error) {
+        // console.log()
         res.status(500).json({ message: error.message });
     }
 });
@@ -160,11 +161,29 @@ const updateRepos = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 exports.updateRepos = updateRepos;
 const getRepoCollaborators = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoId } = req.params;
+    const { add, searchQuery = '' } = req.query;
+    const minAccess = ['editor', 'manager', 'administrator'];
+    console.log('repoId', repoId);
+    console.log('searchQuery', searchQuery);
     try {
-        const collaborators = yield collaboratorSchema_1.default.find({ 'repository._id': repoId, state: true });
-        res.status(200).json({
-            collaborators
-        });
+        if (add) {
+            const collaborators = yield collaboratorSchema_1.default.find({
+                name: new RegExp(searchQuery, 'i'),
+                'repository._id': repoId,
+                'repository.accessLevel': { $in: minAccess },
+                state: true
+            }).select('uid name photoUrl');
+            console.log('collaborators', collaborators);
+            res.status(200).json({
+                collaborators
+            });
+        }
+        else {
+            const collaborators = yield collaboratorSchema_1.default.find({ 'repository._id': repoId, state: true });
+            res.status(200).json({
+                collaborators
+            });
+        }
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -282,6 +301,7 @@ exports.getReposByProject = getReposByProject;
 const getReposByLayer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { layerID } = req.params;
     const { owner, repos } = req;
+    console.log('repos', repos);
     try {
         if (owner && owner === true) {
             const repos = yield repoSchema_1.default.find({ layerID });
@@ -291,6 +311,7 @@ const getReposByLayer = (req, res) => __awaiter(void 0, void 0, void 0, function
             });
         }
         else {
+            console.log('Entrando a collaborator');
             res.status(200).json({
                 success: true,
                 repos

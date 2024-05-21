@@ -210,9 +210,7 @@ export const updateLayer = async (req: express.Request, res: express.Response) =
 
 export const loadRepoFiles = async (req: express.Request, res: express.Response) => {
   const { branch } = req.params
-  console.log('branch en el loadrepofiles',branch)
   const { repoGitlabID } = req; // Asegúrate de obtener correctamente el ID
-  console.log(repoGitlabID)
 
   if (!repoGitlabID) {
     return res.status(400).json({ message: 'Repository not found.' });
@@ -221,7 +219,7 @@ export const loadRepoFiles = async (req: express.Request, res: express.Response)
   try {
     const response = await axios.get(`https://gitlab.com/api/v4/projects/${repoGitlabID}/repository/tree?ref=${branch}`, {
       headers: {
-        'PRIVATE-TOKEN': process.env.GITLAB_READ_REPOS,
+        'PRIVATE-TOKEN': process.env.GITLAB_ACCESS_TOKEN,
       },
     });
 
@@ -232,13 +230,12 @@ export const loadRepoFiles = async (req: express.Request, res: express.Response)
 
     res.status(200).json({ files: response.data, branch });
   } catch (error) {
-    // Ajusta según el tipo de error específico de GitLab para un repositorio vacío
     if (error.response && error.response.status === 404) {
       return res.json({ message: 'No repository files found.', files: [] });
     }
 
     console.log(error.response ? error.response.data : error.message);
-    res.status(500).json({ message: 'Error while fetching repository files.' });
+    return res.status(500).json({ message: error.response ? error.response.data : error.message || 'Error loading repository files.'});
   }
 };
 
@@ -259,7 +256,7 @@ export const loadContentFile = async (req: express.Request, res: express.Respons
   try {
     const response = await axios.get(`https://gitlab.com/api/v4/projects/${repoGitlabID}/repository/files/${encodeURIComponent(filePath)}/raw?ref=${encodeURIComponent(branch)}`, {
       headers: {
-        'PRIVATE-TOKEN': process.env.GITLAB_READ_REPOS,
+        'PRIVATE-TOKEN': process.env.GITLAB_ACCESS_TOKEN,
       },
       responseType: 'text' // Asegúrate de que la respuesta se trata como texto
     });
@@ -320,3 +317,85 @@ export const loadFolderContents = async (req: express.Request, res: express.Resp
   }
 };
 
+
+
+
+
+export const diffCommits = async (req: express.Request, res: express.Response) => {
+  const { hash1, hash2, gitlabId } = req;
+  const { uuid1, uuid2 } = req.query
+
+  if (!gitlabId) {
+    return res.status(400).json({ message: 'Repository not found.' });
+  }
+
+  try {
+    if( hash2 === null ){
+
+      
+      console.log('Solo hay un hash')
+      const commit1FilesResponse = await axios.get(`https://gitlab.com/api/v4/projects/${encodeURIComponent(gitlabId)}/repository/commits/${hash1}/diff`, {
+        headers: { 
+          'Authorization': `Bearer ${process.env.GITLAB_ACCESS_TOKEN}` 
+        },
+      });
+
+      const commit1Files = commit1FilesResponse.data;
+
+      return res.status(200).json({ 
+        type: 'one-diff',
+        commit1: { hash: uuid1 || uuid1, diffs: commit1Files, additionalData: commit1FilesResponse.data },
+        commit2: null
+      });
+
+    } else {
+      const response = await axios.get(`https://gitlab.com/api/v4/projects/${encodeURIComponent(gitlabId)}/repository/compare?from=${hash1}&to=${hash2}`, { 
+          headers: { 
+            'Authorization': `Bearer ${process.env.GITLAB_ACCESS_TOKEN}` 
+          },
+      });
+
+      console.log('Respuesta comparativa',response)
+
+      const diffData = response.data;
+
+      // Verifica si el diff está vacío
+      if (diffData.diffs.length === 0) {
+        console.log('No hay coincidencia')
+        // Si el diff está vacío, recupera el contenido de los archivos de ambos commits
+        const commit1FilesResponse = await axios.get(`https://gitlab.com/api/v4/projects/${encodeURIComponent(gitlabId)}/repository/commits/${hash1}/diff`, {
+          headers: { 
+            'Authorization': `Bearer ${process.env.GITLAB_ACCESS_TOKEN}` 
+          },
+        });
+        const commit2FilesResponse = await axios.get(`https://gitlab.com/api/v4/projects/${encodeURIComponent(gitlabId)}/repository/commits/${hash2}/diff`, {
+          headers: { 
+            'Authorization': `Bearer ${process.env.GITLAB_ACCESS_TOKEN}` 
+          },
+        });
+
+
+        const commit1Files = commit1FilesResponse.data;
+        const commit2Files = commit2FilesResponse.data;
+
+
+        // Devuelve el contenido de los archivos junto con cualquier otra información relevante
+        return res.status(200).json({ 
+          type: 'no-diff',
+          message: 'No differences detected, returning file contents for comparison.', 
+          commit1: { hash: uuid1, diffs: commit1Files },
+          commit2: { hash: uuid2, diffs: commit2Files }
+        });
+      }
+
+      console.log('Hubo coincidencia')
+
+      // Si hay diferencias, devuelve la respuesta de la comparación de commits normalmente
+      res.status(200).json({ type: 'diff', uuid1, uuid2, diffData });
+    }
+
+  } catch (error) {
+    console.log(error.response ? error.response.data : error.message);
+    res.status(500).json({ message: error.message });
+  }
+};

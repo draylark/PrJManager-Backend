@@ -24,15 +24,20 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const DB_validators_1 = require("../middlewares/DB-validators");
 const validateJWT_1 = require("../middlewares/validateJWT");
-const commits_middlewares_1 = require("../middlewares/commits-middlewares");
 const commitsController = __importStar(require("../controllers/commits"));
+const DB_validators_1 = require("../middlewares/DB-validators");
+const commits_middlewares_1 = require("../middlewares/commits-middlewares");
 const project_middlewares_1 = require("../middlewares/project-middlewares");
 const router = (0, express_1.Router)();
-router.get('/:repoID', [validateJWT_1.validateJWT, DB_validators_1.validateRepositoryExistance], commitsController.getCommitsByRepo);
-router.get('/:repoID/diff/:hash', [validateJWT_1.validateJWT, DB_validators_1.validateRepositoryExistance, commits_middlewares_1.findCommit], commitsController.getCommitDiff);
+router.get('/:repoID', commitsController.getCommitsByRepo);
+router.get('/:repoID/diff/:hash', [
+    DB_validators_1.validateRepositoryExistance,
+    commits_middlewares_1.findCommit
+], commitsController.getCommitDiff);
 router.get('/activity/:projectID', commitsController.getProyectCommits);
+router.get('/repo-activity/:repoID', commitsController.getRepoCommits);
+router.get('/get-commits-for-dashboard/:uid', commitsController.getCommitsForDashboard);
 router.get('/activity-data/:projectID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,

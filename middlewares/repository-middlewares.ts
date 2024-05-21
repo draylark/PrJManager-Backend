@@ -5,7 +5,7 @@ import axios from 'axios';
 import Layer from '../models/layerSchema';
 import Project from '../models/projectSchema';
 import { whatIsTheAccess } from './project-middlewares';
-
+import Noti from '../models/notisSchema';
 
 
 export const createRepoOnGitlab = async (req: Request, res: Response, next: NextFunction) => {
@@ -80,6 +80,7 @@ export const createRepoOnMongoDB = async (req: Request, res: Response, next: Nex
         res.status(500).json({ message: error.message });
     }
 }
+
 
 
 
@@ -276,6 +277,7 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
   
   const { repoID, projectID } = req.params
   const { newCollaborators } = req.body
+  const { repo, layer, project } = req
 
   if( newCollaborators.length === 0 ) {
       req.creatingMiddlewareState = false;
@@ -283,10 +285,6 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
   }
 
   let totalCreated = 0;
-
-  console.log('newCollaborators en el')
-  console.log('newCollaborators', newCollaborators)
-  console.log('projectID', projectID)
 
   try {
 
@@ -297,12 +295,34 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
           if (existingCollaborator) {
               if (!existingCollaborator.state) {
                   await Collaborator.updateOne({ projectID, _id: existingCollaborator._id, 'repository._id': repoID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'repository.accessLevel': accessLevel } });
+                  
+                  const noti = new Noti({
+                      type: 'added-to-repo',
+                      title: 'Added to repository',
+                      description: `You have been added to a repository.`,
+                      recipient: id,
+                      from: { name: 'System', ID: projectID },
+                      additionalData: { repoId: repoID, repoName: repo.name, accessLevel, projectName: project.name, layerName: layer.name, layerId: layer._id }
+                  });
+                  await noti.save();
+                  
                   totalCreated++;
               }
               // Si el colaborador existe y ya está activo, no aumentar totalCreated.
           } else {
               const c = new Collaborator({ projectID, uid: id, name,  photoUrl, repository: { _id: repoID, accessLevel }, state: true });
               await c.save();
+
+              const noti = new Noti({
+                  type: 'added-to-repo',
+                  title: 'Added to repository',
+                  description: `You have been added to a repository.`,
+                  recipient: id,
+                  from: { name: 'System', ID: projectID },
+                  additionalData: { repoId: repoID, repoName: repo.name, accessLevel, projectName: project.name, layerName: layer.name, layerId: layer._id }
+              });
+              await noti.save();
+
               totalCreated++;
           }
       };
@@ -317,6 +337,7 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
       req.creatingMiddlewareState = true;
       next();
   } catch (error) {
+      console.log(error)
       res.status(400).json({
           message: 'Internal Server error',
           error
@@ -431,5 +452,129 @@ export const getProjectReposDataBaseOnAccess = async(req: Request, res: Response
           message: 'Internal Server error',
           error
       });
+  }
+}
+
+export const getLayerReposDataBaseOnAccess = async(req: Request, res: Response, next: NextFunction) => {
+  const uid = req.query.uid;
+  const { projectID } = req.params;
+  const { owner, levels, type } = req;
+
+  if (owner && owner === true) {
+      return next();
+  }
+
+  try {
+    if( type === 'collaborator'){
+      console.log('Niveles del collaborator',levels)
+        const collaboratorOnRepos = await Collaborator.find({ projectID, uid, state: true, 'repository._id': { $exists: true } })
+                                          .lean()
+                                          .populate({
+                                            path: 'repository._id', // Población inicial del ID del repositorio.
+                                            populate: { path: 'layerID' } // Población en cadena de `layerID` dentro del documento del repositorio.
+                                          })
+                                          
+
+        const reposBaseOnLevel = collaboratorOnRepos.map(( repo) => {
+          const { _id: { visibility, gitlabId, gitUrl, webUrl, layerID, ...rest }, accessLevel } = repo.repository;
+          return { ...rest, visibility, layerID: layerID._id, accessLevel };
+        });
+
+
+        const openRepos = await Repo.find({ projectID, visibility: 'open' })
+                                .populate('layerID')
+                                .lean();
+
+
+                        console.log('openRepos', openRepos)
+
+        const uniqueOpenReposWithGuestAccess = openRepos.filter( openRepo => 
+          !reposBaseOnLevel.some(repo => repo._id.toString() === openRepo._id.toString())).map( repo => {                 
+            const { layerID: { _id, visibility }, gitUrl, webUrl, gitlabId, ...rest} = repo 
+            if( visibility === 'open' ){
+              return { ...rest, layerID: _id, accessLevel: 'guest' }
+            }
+          }).filter( repo => repo !== undefined )   
+
+          console.log('uniqueOpenReposWithGuestAccess', uniqueOpenReposWithGuestAccess)
+
+
+        req.repos = [ ...reposBaseOnLevel, ...uniqueOpenReposWithGuestAccess ];
+        return next()
+    } else {
+      console.log('Niveles del guest',levels)
+        const repos = await Repo.find({ projectID, visibility: { $in: levels } })
+                            .lean()
+                            .populate('layerID')
+
+        const reposBaseOnLevel = repos.reduce((acc, repo) => {
+          const { visibility, layerID, gitlabId, gitUrl, webUrl, ...rest } = repo;
+            
+          if (visibility && levels.includes(visibility) && levels.includes(layerID.visibility)) {
+            acc.push({ ...rest, visibility, layerID: layerID._id, accessLevel: 'guest'});
+          }
+          return acc;
+        }, []);
+
+        req.repos = reposBaseOnLevel
+        return next()
+    }
+  } catch (error) {
+      console.log(error)
+      res.status(400).json({
+          message: 'Internal Server error',
+          error
+      });
+  }
+}
+
+
+
+export const getCreatedReposDates = async(req: Request, res: Response, next: NextFunction) => {
+
+  const { uid } = req.params;
+  const { startDate, endDate } = req.query
+
+  try {
+
+      const repos = await Repo.find({ creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+                           .select('_id name createdAt creator layerID projectID')
+                            .populate('layerID', 'name')
+                            .populate('projectID', 'name')
+                          .lean()
+
+      req.createdRepos = repos
+      next();
+  } catch (error) {
+      console.log(error)
+      res.status(400).json({
+          message: 'Internal Server error',
+          error
+      });      
+  }
+};
+
+
+export const geProjectCreatedReposDates = async(req: Request, res: Response, next: NextFunction) => {
+
+  const { projectId } = req.params;
+  const { startDate, endDate, uid } = req.query
+
+  try {
+
+      const repos = await Repo.find({ projectID: projectId, creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+                           .select('_id name createdAt creator layerID projectID')
+                            .populate('layerID', 'name')
+                            .populate('projectID', 'name')
+                          .lean()
+
+      req.createdRepos = repos
+      next();
+  } catch (error) {
+      console.log(error)
+      res.status(400).json({
+          message: 'Internal Server error',
+          error
+      });      
   }
 }

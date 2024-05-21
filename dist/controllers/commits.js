@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProyectCommits = exports.getCommitDiff = exports.getCommitsByRepo = void 0;
+exports.getCommitsForDashboard = exports.getRepoCommits = exports.getProyectCommits = exports.getCommitDiff = exports.getCommitsByRepo = void 0;
 const commitSchema_1 = __importDefault(require("../models/commitSchema"));
 const getCommitsByRepo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
@@ -102,4 +102,61 @@ const getProyectCommits = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.getProyectCommits = getProyectCommits;
+const getRepoCommits = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { repoID } = req.params;
+    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    try {
+        let matchConditions = { repository: repoID };
+        if (year) {
+            matchConditions = Object.assign(Object.assign({}, matchConditions), { createdAt: {
+                    $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                    $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+                } });
+        }
+        const commits = yield commitSchema_1.default.find(matchConditions)
+            .populate({
+            path: 'associated_task',
+            select: '_id task_name'
+        })
+            .select('-hash')
+            .sort({ createdAt: -1 });
+        return res.json({
+            commits
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
+});
+exports.getRepoCommits = getRepoCommits;
+const getCommitsForDashboard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { startDate, endDate, uid } = req.query;
+    console.log(startDate, endDate, uid);
+    try {
+        let matchConditions = { 'author.uid': uid };
+        if (startDate && endDate) {
+            matchConditions['createdAt'] = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+        console.log(matchConditions);
+        const commits = yield commitSchema_1.default.find(matchConditions)
+            .select('_id message createdAt')
+            .sort({ createdAt: -1 });
+        return res.json({
+            commits
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
+});
+exports.getCommitsForDashboard = getCommitsForDashboard;
 //# sourceMappingURL=commits.js.map

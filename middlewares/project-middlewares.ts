@@ -5,7 +5,7 @@ import Repo from '../models/repoSchema';
 import Collaborator from '../models/collaboratorSchema';
 import Noti from '../models/notisSchema';
 import User from '../models/userSchema';
-
+import Readme from '../models/readmeSchema';
 
 // ! Middlewares Helpers
 
@@ -62,8 +62,33 @@ const appropiateLevelAccessOnRepo = (accessLevel: string ) => {
 };
 
 
+// ! Project Crud
+export const createProject = async (req: Request, res: Response, next: NextFunction) => {
 
-// ! Validation
+    const { readmeContent, ...rest } = req.body
+    const { uid } = req.query
+
+    try {
+
+        const project = new Project( { ...rest, owner: uid } )
+        await project.save()
+
+        await User.findByIdAndUpdate( uid, { $inc: { projects: 1 } }, { new: true } )
+
+        req.project = project
+        next()
+        
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        })
+    }
+}
+
+
+// ! Project Validation
 export const validateProjectExistance = async (req: Request, res: Response, next: NextFunction) => {
 
     const { projectID } = req.params
@@ -83,7 +108,95 @@ export const validateProjectExistance = async (req: Request, res: Response, next
     req.owner = owner
     next()
 };
+export const validateProjectVisibility= async(req: Request, res: Response, next: NextFunction) => {
+    const { project } = req
+    const { uid } = req.query
 
+    if( project.owner.toString() === uid ){
+        req.owner = true
+        return next()
+    }
+
+    try {
+        if( project.visibility === 'public' ){
+            req.type = 'public'
+            req.owner = false
+            return next()
+        } else {
+            req.type = 'private'
+            req.owner = false
+            return next()
+        }
+    } catch (error) {
+        console.log(error)
+        return res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    };
+};
+
+export const validateUserProjects = async(req: Request, res: Response, next: NextFunction) => {
+    const { uid } = req.query
+
+    const projects = await Project.find({ owner: uid })
+
+    if( projects.length >= 3 ){
+        return res.status(400).json({
+            success: false,
+            message: 'You have reached the limit of projects you can create.',
+            type: 'projects-limit'
+        })
+    }
+
+    next()
+}
+
+
+// ! Collaborator Validation
+
+export const validateUserAccessBaseOnProjectVisibility = async(req: Request, res: Response, next: NextFunction) => {
+
+    const { project } = req;
+    const { uid } = req.query;
+    const { projectID } = req.params;
+
+    if( project.owner.toString() === uid ){
+        req.owner = true
+        return next()
+    }
+
+    try {
+        const collaborator = await Collaborator.findOne({ uid, projectID, state: true, 'project._id': projectID });
+
+        if( project.visibility === 'public' ){
+            if( !collaborator ){
+                req.accessLevel = 'guest'
+                return next()
+            } else {
+                req.accessLevel = collaborator.project.accessLevel
+                return next()
+            }
+        } else {
+            if( !collaborator ){
+                return res.status(400).json({
+                    success: false,
+                    message: 'This project is private and you do not have access as collaborator.',
+                    type: 'collaborator-validation'
+                })
+            } else {
+                req.accessLevel = collaborator.project.accessLevel
+                return next()
+            }
+        }
+    } catch (error) {
+        console.log(error)
+        return res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    };
+};
 export const validateUserAccessOnProject = async (req: Request, res: Response, next: NextFunction) => {
     const { project } = req
     const uid = req.query.uid;
@@ -122,7 +235,6 @@ export const validateUserAccessOnProject = async (req: Request, res: Response, n
     }
 
 }
-
 export const validateCollaboratorAccessOnProject = ( minAccess: string[] ) => {
     return async ( req: Request, res: Response, next: NextFunction ) => {
         const { project } = req
@@ -153,7 +265,6 @@ export const validateCollaboratorAccessOnProject = ( minAccess: string[] ) => {
         next()
     };
 };
-
 export const ownerOrCollaborator = async(req: Request, res: Response, next: NextFunction) => {
     const { projectID } = req.params;
     const project = req.project;
@@ -185,8 +296,7 @@ export const ownerOrCollaborator = async(req: Request, res: Response, next: Next
         req.levels = levels;
         next();
     }
-}
-
+};
 export const itIsTheOwner = async(req: Request, res: Response, next: NextFunction) => {
     const{ project } = req;
     const { uid } = req.query;
@@ -208,7 +318,8 @@ export const itIsTheOwner = async(req: Request, res: Response, next: NextFunctio
             error
         });   
     }
-}
+};
+
 
 
 
@@ -234,6 +345,7 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
                 recipient: collaborator.id, 
                 from: { name: req.user.username, ID: req.user._id, photoUrl: req.user.photoUrl || null }, 
                 additionalData: {
+                    date: new Date(),
                     project_name: project.name,
                     projectID: projectID,
                     accessLevel: collaborator.accessLevel,
@@ -300,7 +412,6 @@ export const createOtherCDataOfProjectCreatedCollaborators = async(req: Request,
                     }
                 } else {
                     if ( levels.includes(repo.visibility) && levels.includes(visibility) ) {
-                        console.log('Creando nuevo colaborador en repo')
                         const c = new Collaborator({ uid, name, projectID, photoUrl, repository: { _id: repo._id, accessLevel: appropiateLevelAccessOnRepo(accessLevel) }, state: true });
                         await c.save();
                     }
@@ -315,7 +426,6 @@ export const createOtherCDataOfProjectCreatedCollaborators = async(req: Request,
             error
         });
     }
-
 };
 
 export const handlePrJCollaboratorInvitation = async( req: Request, res: Response, next: NextFunction ) => {
@@ -339,6 +449,7 @@ export const handlePrJCollaboratorInvitation = async( req: Request, res: Respons
                 const c = new Collaborator({ uid, name, photoUrl, projectID, project: { _id: projectID, accessLevel }, state: true });
                 await c.save();
 
+                await Noti.findByIdAndUpdate ( notiID, { status: false } );
                 return next()
             }
         } else {
@@ -352,8 +463,6 @@ export const handlePrJCollaboratorInvitation = async( req: Request, res: Respons
             error: error.message
         });
     }
-
-
 }
 
 
@@ -639,3 +748,51 @@ export const returnDataBaseOnAccessLevel = async(req: Request, res: Response, ne
 }
 
 
+
+// ! Project(s) Data
+
+export const getProjectsLength = async(req: Request, res: Response, next: NextFunction) => {
+    const { uid } = req.params;
+
+    try {
+        const myProjects = await Project.find({ owner: uid })
+                                    .select('_id')
+        const collaboratorProjects = await Collaborator.find({ uid, state: true, 'project._id': { $exists: true } })
+                                                        .select('_id')
+
+        const projectsLength = myProjects.length + collaboratorProjects.length
+
+
+        req.projectsLength = projectsLength 
+        next() 
+    } catch (error) {
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+}
+
+
+
+export const getCreatedProjectsDates = async (req, res, next) => {
+    const { uid } = req.params;
+    const { startDate, endDate } = req.query;
+  
+    try {
+      const createdProjects = await Project.find({
+        owner: uid,
+        createdAt: { $gte: startDate, $lte: endDate }
+      })
+      .select('_id name createdAt owner');
+  
+      req.createdProjects = createdProjects;
+      next();
+    } catch (error) {
+      console.log(error);
+      res.status(400).json({
+        message: 'Internal Server error',
+        error
+      });
+    }
+  };

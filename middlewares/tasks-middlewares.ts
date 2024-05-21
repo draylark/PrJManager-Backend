@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import Collaborator from "../models/collaboratorSchema";
 import Task from "../models/taskSchema";
-
+import Note from "../models/noteSchema";
 
 const evalAccess = ( cOnLayer, cOnRepo, lVisibility, RVisibility ) => {
 
@@ -15,6 +15,41 @@ const evalAccess = ( cOnLayer, cOnRepo, lVisibility, RVisibility ) => {
 
     return false;
 };
+
+
+export const getTaskContributors = async(req: Request, res: Response, next: NextFunction) => {
+ 
+    const { taskId } = req.params;
+
+    try {
+        const task = await Task.findById(taskId)
+                        .select('commits_hashes')
+
+        const contributorsData = await Task.findById(taskId)
+                        .populate({
+                            path: 'contributorsIds',
+                            select: 'username photoUrl _id'
+                        })
+
+        if (!task) {
+            return res.status(404).json({
+                message: 'Task not found'
+            })
+        }
+
+        req.hashes = task.commits_hashes;
+        req.contributorsData = contributorsData.contributorsIds
+        next();
+    
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            message: 'Internal Server error',
+            error
+        })
+    }
+}
+
 
 export const validateUserAccessForTaskData = async(req: Request, res: Response, next: NextFunction) => {
 
@@ -52,6 +87,47 @@ export const validateUserAccessForTaskData = async(req: Request, res: Response, 
     }
 };
 
+export const getTaskData = async(req: Request, res: Response, next: NextFunction) => {
+    const { taskId } = req.params;
+
+    try {
+        
+
+        const task = await Task.findById(taskId)
+                            .populate({
+                                path: 'layer_related_id',
+                                select: 'name _id'
+                            })
+                            .populate({
+                                path: 'repository_related_id',
+                                select: 'name _id'
+                            })
+                            .populate({
+                                path: 'project',
+                                select: 'name _id'
+                            })
+                            .populate({
+                                path: 'readyContributors.uid',
+                                select: 'username photoUrl _id'
+                            })
+        if (!task) {
+            return res.status(404).json({
+                message: 'Task not found'
+            })
+        }
+
+        req.task = task;
+        next();
+
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            message: 'Internal Server error',
+            error
+        })
+    }
+}
+
 export const getProjectTasksBaseOnAccessForHeatMap = async(req: Request, res: Response, next: NextFunction) => {
     const { projectID } = req.params;
     const uid = req.query.uid
@@ -78,6 +154,7 @@ export const getProjectTasksBaseOnAccessForHeatMap = async(req: Request, res: Re
             const tasks = await Task.find(matchCondition)
                                 .populate('layer_related_id repository_related_id')
                                 .lean()         
+             // ! Tareas en el que el usuario tiene acceso como colaborador ( state : true )
 
             const filteredTasksBaseOnAccess = (await Promise.all(tasks.map(async (task) => {
                 const { layer_related_id: { _id: taskId }, repository_related_id: { _id: repoId }, ...rest } = task;
@@ -93,7 +170,7 @@ export const getProjectTasksBaseOnAccessForHeatMap = async(req: Request, res: Re
                 }
             }))).filter(task => task !== undefined);
 
-
+            // ! Tareas en el caso de que el usuario no tiene acceso como colaborador ( state: false ), pero los padres son abiertos
             const uniqueTasksOnOpenParents = ( await Promise.all( tasks.filter(openTask => 
                 !filteredTasksBaseOnAccess.some(task => task._id.toString() === openTask._id.toString())
               ).map( async task => {  
@@ -120,6 +197,7 @@ export const getProjectTasksBaseOnAccessForHeatMap = async(req: Request, res: Re
                                 .populate('layer_related_id repository_related_id')
                                 .lean()
 
+            // ! Tareas en el caso de que el usuario sea un guest
             const filteredTasksBaseOnLevel = tasks.reduce((acc, task) => {
                 const { layer_related_id, repository_related_id } = task;
 
@@ -258,7 +336,8 @@ export const validateCollaboratorAccess = ( minAccess: string[] ) => {
 
         try {
             if( project.owner.toString() === uid ) {
-                req.type = 'owner';
+                req.authorized = owner;
+                req.type = 'authorized';
                 return next();
             }
 
@@ -272,27 +351,28 @@ export const validateCollaboratorAccess = ( minAccess: string[] ) => {
 
 
             if( minAccess.includes( collaboratorOnProject.project.accessLevel ) ) {
-                req.collaborator = collaboratorOnProject;
-                req.type = 'collaborator';
+                req.authorized = collaboratorOnProject;
+                req.type = 'authorized';
                 return next();
             };
 
 
             const collaboratorOnLayer = await Collaborator.findOne({ uid, projectID, state: true, 'layer._id': layerID })
             if ( collaboratorOnLayer && minAccess.includes( collaboratorOnLayer.layer.accessLevel ) ) {
-                req.collaborator = collaboratorOnLayer;
-                req.type = 'collaborator';
+                req.authorized = collaboratorOnLayer;
+                req.type = 'authorized';
                 return next();
             };
 
 
             const collaboratorOnRepo = await Collaborator.findOne({ uid, projectID, state: true, 'repository._id': repoID })
             if ( collaboratorOnRepo && minAccess.includes( collaboratorOnRepo.repository.accessLevel ) ) {
-                req.collaborator = collaboratorOnRepo;
-                req.type = 'collaborator';
+                req.authorized = collaboratorOnRepo;
+                req.type = 'authorized';
                 return next();
             };
 
+            req.type = 'no-authorized'
 
             return res.status(401).json({
                 success: false,
@@ -308,4 +388,424 @@ export const validateCollaboratorAccess = ( minAccess: string[] ) => {
             })
         }
     }
+};
+
+export const getCompletedTasksLength = async(req: Request, res: Response, next: NextFunction) => {
+    const { uid } = req.params;
+    const { currentYear, currentMonth } = req.query;
+    
+    // Convertir a números si no lo son, ya que los parámetros de la consulta son recibidos como strings
+    const year = Number(currentYear);
+    const month = Number(currentMonth);
+
+    if (!year || !month || month < 1 || month > 12) {
+        return res.status(400).json({
+            message: "Invalid year or month"
+        });
+    }
+
+    // Ajuste para el índice de mes correcto (-1 si los meses vienen de 1 a 12)
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+    if (isNaN(startDate.valueOf()) || isNaN(endDate.valueOf())) {
+        return res.status(400).json({
+            message: "Generated dates are invalid."
+        });
+    }
+
+
+    let assignedfilter = { 
+        assigned_to: uid, 
+        status: 'completed', 
+        updatedAt: {
+            $gte: startDate,
+            $lte: endDate
+        }
+     };
+
+    let contributionsFilter = { 
+        contributorsIds: uid, 
+        status: 'completed',
+        updatedAt: {
+            $gte: startDate,
+            $lte: endDate
+        }
+     };
+
+    try {
+
+        const tasks = await Task.find(assignedfilter)
+        .sort({ updatedAt: -1 })
+        .select('_id task_name')
+
+        const contributions = await Task.find(contributionsFilter)
+            .sort({ updatedAt: -1 })
+            .select('_id task_name')
+
+
+        const combinedTasks = [...tasks, ...contributions];
+
+        const uniqueTasks = combinedTasks.filter(
+            (task, index, self) => self.findIndex(t => t._id.toString() === task._id.toString()) === index
+        );
+
+        req.completedTasksLength = uniqueTasks.length;
+
+        next();
+
+    } catch (error) {
+
+        console.log(error)
+        return res.status(500).json({
+            message: 'Internal Server error',
+            error
+        })
+    }
+}; 
+
+
+const allTaskContributorsReady = (contributorsIds, readyContributors) => {
+    if (contributorsIds.length !== readyContributors.length) {
+      return false;
+    }
+  
+    const sortedContributorsIds = contributorsIds.slice().sort().map(id => id.toString());
+    const sortedReadyContributors = readyContributors.slice().sort((a, b) => a.uid.toString().localeCompare(b.uid.toString()));
+  
+    for (let i = 0; i < sortedContributorsIds.length; i++) {
+      if (sortedContributorsIds[i] !== sortedReadyContributors[i].uid.toString()) {
+        return false;
+      }
+    }
+    return true;
+};
+  
+export const updateParticipation = async (req: Request, res: Response, next: NextFunction) => {
+const { taskId } = req.params;
+const { uid, notes } = req.body; // Asegúrate de que uid sea un string.
+
+try {
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (task.type === "assigned") {
+    const isContributor = task.contributorsIds.includes(uid);
+    const itIsTheAssigned = task.assigned_to.toString() === uid;
+
+    if (isContributor || itIsTheAssigned) {
+        if(itIsTheAssigned){
+            await Task.updateOne(
+                { _id: taskId },
+                { $set: { readyContributors: task.contributorsIds.map(id => ({ uid: id, date: new Date(), me: false })) } }
+            );
+        } else {
+            await Task.updateOne(
+                { _id: taskId },
+                { $set: { readyContributors: { uid, date: new Date(), me: true } } }
+            );
+        }
+
+        // Convertir cada string de notes en un objeto que cumpla con noteSchema
+        const formattedNotes = notes.map(noteText => ({ text: noteText, uid, task: taskId }));
+
+        if (formattedNotes.length > 0) {
+        await Note.insertMany(formattedNotes);
+        }
+
+        if (itIsTheAssigned) {
+        return next();
+        }
+        return res.status(200).json({ message: 'Contributor marked as ready' });
+    } else {
+        return res.status(400).json({ message: 'User is not a contributor' });
+    }
+    } else {
+
+    const isContributor = task.contributorsIds.includes(uid);
+
+    if (isContributor) {
+        const updatedTask = await Task.findOneAndUpdate(
+        { _id: taskId },
+        { $addToSet: { readyContributors: { uid, date: new Date(), me: true } } },
+        { new: true }  // Asegura que el documento retornado sea el actualizado      
+        );
+
+        // Convertir cada string de notes en un objeto que cumpla con noteSchema
+        const formattedNotes = notes.map(noteText => ({ text: noteText, uid, task: taskId }));
+
+        if (formattedNotes.length > 0) {
+         await Note.insertMany(formattedNotes);
+        }
+
+        if (updatedTask) {
+        const isReady = allTaskContributorsReady(updatedTask.contributorsIds, updatedTask.readyContributors);
+        if (isReady) {
+            console.log('Task is ready');
+            return next();
+        }
+        }
+        console.log('Task is not ready');
+        return res.status(200).json({ message: 'Contributor marked as ready' });
+    } else {
+        return res.status(400).json({ message: 'User is not a contributor' });
+    }
+    }
+} catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'An error occurred', error });
 }
+};
+
+
+
+
+
+
+
+
+export const getTasksDates = async(req: Request, res: Response, next: NextFunction) => {
+    const { uid } = req.params;
+    const { startDate, endDate } = req.query;
+  
+    try {
+
+
+    // ! ASSIGNED
+
+    // ? Creacion de tarea
+      const taskSet0 = await Task.find({
+        creator: uid,
+        createdAt: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('createdAt task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+
+
+    // ? Envio a revision de tarea asignada
+      const tasksSet1 = await Task.find({
+        assigned_to: uid,
+        // completed_at: null,
+        reviewSubmissionDate: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('reviewSubmissionDate task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+  
+
+    // ? Tarea asignada y aprobada
+      const tasksSet2 = await Task.find({
+        assigned_to: uid,
+        status: 'completed',
+        completed_at: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('completed_at task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+  
+    // ! CONTRIBUTOR
+
+    // ? Tarea enviada a revision en la que se es contribuidor
+      const tasksSet3 = await Task.find({
+        assigned_to: { $ne: uid },
+        contributorsIds: uid,
+        // completed_at: null,
+        reviewSubmissionDate: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('reviewSubmissionDate task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+
+    // ? Tarea aprobada en la que se es contribuidor
+      const tasksSet4 = await Task.find({
+        assigned_to: { $ne: uid },
+        contributorsIds: uid,
+        status: 'completed',
+        completed_at: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('completed_at task_name assigned_to _id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+    // ? Tarea en la que se es contribuidor y terminaste tus contribuiciones
+    const tasksSet5 = await Task.find({
+        assigned_to: { $ne: uid },
+        me: true,
+        contributorsIds: uid,
+        readyContributors: { $elemMatch: { uid, date: { $gte: startDate, $lte: endDate } } }
+      })
+      .sort({ updatedAt: -1 })
+      .select('completed_at task_name assigned_to _id repository_related_id readyContributors')
+      .populate({
+        path: 'repository_related_id',
+        select: 'name'
+      })
+      .lean()
+      
+      const filteredTasksSet5 = tasksSet5.map(task => {
+        const { readyContributors, ...rest } = task;
+        const matchedContributor = readyContributors.find(contributor => 
+          contributor.uid.toString() === uid &&
+          new Date(contributor.date) >= new Date(startDate) &&
+          new Date(contributor.date) <= new Date(endDate)
+        );
+      
+        return {
+          ...rest,
+          readyContributorData: matchedContributor ? matchedContributor : {}
+        };
+      });
+
+  
+      // Puedes adjuntar los conjuntos de tareas a la solicitud para usarlos más adelante si es necesario
+      req.tasks = { taskSet0, tasksSet1, tasksSet2, tasksSet3, tasksSet4, tasksSet5: filteredTasksSet5 };
+  
+      next();
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({
+        message: 'Internal Server error',
+        error,
+      });
+    }
+};
+  
+  
+export const getProjectTasksDates = async(req: Request, res: Response, next: NextFunction) => {
+    const { projectId } = req.params;
+    const { startDate, endDate, uid } = req.query
+  
+    try {
+
+
+    // ? Creacion de tarea
+      const taskSet0 = await Task.find({
+        project: projectId,
+        creator: uid,
+        createdAt: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('createdAt task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+
+
+    // ? Envio a revision de tarea asignada
+      const tasksSet1 = await Task.find({
+        project: projectId,
+        assigned_to: uid,
+        status: 'approval',
+        completed_at: null,
+        reviewSubmissionDate: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('reviewSubmissionDate task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+  
+
+    // ? Tarea asignada y aprobada
+      const tasksSet2 = await Task.find({
+        project: projectId,
+        assigned_to: uid,
+        status: 'completed',
+        completed_at: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('completed_at task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+  
+
+    // ? Tarea enviada a revision en la que se es contribuidor
+      const tasksSet3 = await Task.find({
+        project: projectId,
+        assigned_to: { $ne: uid },
+        contributorsIds: uid,
+        status: 'approval',
+        completed_at: null,
+        reviewSubmissionDate: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('reviewSubmissionDate task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+
+    // ? Tarea aprobada en la que se es contribuidor
+      const tasksSet4 = await Task.find({
+        project: projectId,
+        assigned_to: { $ne: uid },
+        contributorsIds: uid,
+        status: 'completed',
+        completed_at: { $gte: startDate, $lte: endDate },
+      })
+        .sort({ updatedAt: -1 })
+        .select('completed_at task_name assigned_to _id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+    // ? Tarea aprobada en la que se es contribuidor y se marco como lista
+      const tasksSet5 = await Task.find({
+        project: projectId,
+        assigned_to: { $ne: uid },
+        contributorsIds: uid,
+        status: 'completed',
+        readyContributors: { $elemMatch: { uid, date: { $gte: startDate, $lte: endDate } } },
+      })
+        .sort({ updatedAt: -1 })
+        .select('completed_at task_name assigned_to _id repository_related_id')
+        .populate({
+            path: 'repository_related_id',
+            select: 'name'
+        })
+
+  
+      // Puedes adjuntar los conjuntos de tareas a la solicitud para usarlos más adelante si es necesario
+      req.tasks = { taskSet0, tasksSet1, tasksSet2, tasksSet3, tasksSet4, tasksSet5 };
+  
+      next();
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({
+        message: 'Internal Server error',
+        error,
+      });
+    }
+  };

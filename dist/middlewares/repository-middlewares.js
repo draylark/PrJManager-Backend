@@ -23,12 +23,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProjectReposDataBaseOnAccess = exports.deleteCollaborators = exports.newCollaborators = exports.updateRepoCollaborators = exports.verifyLayerRepos = exports.verifyTwoAccessLevelOfCollaborator = exports.verifyProjectLevelAccessOfNewCollaborator = exports.verifyLayerAccessLevelOfNewCollaborator = exports.validateCollaboratorAccessOnRepository = exports.validateRepositoryExistance = exports.createRepoOnMongoDB = exports.createRepoOnGitlab = void 0;
+exports.geProjectCreatedReposDates = exports.getCreatedReposDates = exports.getLayerReposDataBaseOnAccess = exports.getProjectReposDataBaseOnAccess = exports.deleteCollaborators = exports.newCollaborators = exports.updateRepoCollaborators = exports.verifyLayerRepos = exports.verifyTwoAccessLevelOfCollaborator = exports.verifyProjectLevelAccessOfNewCollaborator = exports.verifyLayerAccessLevelOfNewCollaborator = exports.validateCollaboratorAccessOnRepository = exports.validateRepositoryExistance = exports.createRepoOnMongoDB = exports.createRepoOnGitlab = void 0;
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
 const axios_1 = __importDefault(require("axios"));
 const layerSchema_1 = __importDefault(require("../models/layerSchema"));
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
+const notisSchema_1 = __importDefault(require("../models/notisSchema"));
 const createRepoOnGitlab = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { layer } = req;
     try {
@@ -262,14 +263,12 @@ exports.updateRepoCollaborators = updateRepoCollaborators;
 const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID, projectID } = req.params;
     const { newCollaborators } = req.body;
+    const { repo, layer, project } = req;
     if (newCollaborators.length === 0) {
         req.creatingMiddlewareState = false;
         return next();
     }
     let totalCreated = 0;
-    console.log('newCollaborators en el');
-    console.log('newCollaborators', newCollaborators);
-    console.log('projectID', projectID);
     try {
         const processCollaborator = (collaborator) => __awaiter(void 0, void 0, void 0, function* () {
             const { id, name, photoUrl, accessLevel } = collaborator;
@@ -277,6 +276,15 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
             if (existingCollaborator) {
                 if (!existingCollaborator.state) {
                     yield collaboratorSchema_1.default.updateOne({ projectID, _id: existingCollaborator._id, 'repository._id': repoID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'repository.accessLevel': accessLevel } });
+                    const noti = new notisSchema_1.default({
+                        type: 'added-to-repo',
+                        title: 'Added to repository',
+                        description: `You have been added to a repository.`,
+                        recipient: id,
+                        from: { name: 'System', ID: projectID },
+                        additionalData: { repoId: repoID, repoName: repo.name, accessLevel, projectName: project.name, layerName: layer.name, layerId: layer._id }
+                    });
+                    yield noti.save();
                     totalCreated++;
                 }
                 // Si el colaborador existe y ya está activo, no aumentar totalCreated.
@@ -284,6 +292,15 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
             else {
                 const c = new collaboratorSchema_1.default({ projectID, uid: id, name, photoUrl, repository: { _id: repoID, accessLevel }, state: true });
                 yield c.save();
+                const noti = new notisSchema_1.default({
+                    type: 'added-to-repo',
+                    title: 'Added to repository',
+                    description: `You have been added to a repository.`,
+                    recipient: id,
+                    from: { name: 'System', ID: projectID },
+                    additionalData: { repoId: repoID, repoName: repo.name, accessLevel, projectName: project.name, layerName: layer.name, layerId: layer._id }
+                });
+                yield noti.save();
                 totalCreated++;
             }
         });
@@ -297,6 +314,7 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
         next();
     }
     catch (error) {
+        console.log(error);
         res.status(400).json({
             message: 'Internal Server error',
             error
@@ -392,4 +410,105 @@ const getProjectReposDataBaseOnAccess = (req, res, next) => __awaiter(void 0, vo
     }
 });
 exports.getProjectReposDataBaseOnAccess = getProjectReposDataBaseOnAccess;
+const getLayerReposDataBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const uid = req.query.uid;
+    const { projectID } = req.params;
+    const { owner, levels, type } = req;
+    if (owner && owner === true) {
+        return next();
+    }
+    try {
+        if (type === 'collaborator') {
+            console.log('Niveles del collaborator', levels);
+            const collaboratorOnRepos = yield collaboratorSchema_1.default.find({ projectID, uid, state: true, 'repository._id': { $exists: true } })
+                .lean()
+                .populate({
+                path: 'repository._id',
+                populate: { path: 'layerID' } // Población en cadena de `layerID` dentro del documento del repositorio.
+            });
+            const reposBaseOnLevel = collaboratorOnRepos.map((repo) => {
+                const _a = repo.repository, _b = _a._id, { visibility, gitlabId, gitUrl, webUrl, layerID } = _b, rest = __rest(_b, ["visibility", "gitlabId", "gitUrl", "webUrl", "layerID"]), { accessLevel } = _a;
+                return Object.assign(Object.assign({}, rest), { visibility, layerID: layerID._id, accessLevel });
+            });
+            const openRepos = yield repoSchema_1.default.find({ projectID, visibility: 'open' })
+                .populate('layerID')
+                .lean();
+            console.log('openRepos', openRepos);
+            const uniqueOpenReposWithGuestAccess = openRepos.filter(openRepo => !reposBaseOnLevel.some(repo => repo._id.toString() === openRepo._id.toString())).map(repo => {
+                const { layerID: { _id, visibility }, gitUrl, webUrl, gitlabId } = repo, rest = __rest(repo, ["layerID", "gitUrl", "webUrl", "gitlabId"]);
+                if (visibility === 'open') {
+                    return Object.assign(Object.assign({}, rest), { layerID: _id, accessLevel: 'guest' });
+                }
+            }).filter(repo => repo !== undefined);
+            console.log('uniqueOpenReposWithGuestAccess', uniqueOpenReposWithGuestAccess);
+            req.repos = [...reposBaseOnLevel, ...uniqueOpenReposWithGuestAccess];
+            return next();
+        }
+        else {
+            console.log('Niveles del guest', levels);
+            const repos = yield repoSchema_1.default.find({ projectID, visibility: { $in: levels } })
+                .lean()
+                .populate('layerID');
+            const reposBaseOnLevel = repos.reduce((acc, repo) => {
+                const { visibility, layerID, gitlabId, gitUrl, webUrl } = repo, rest = __rest(repo, ["visibility", "layerID", "gitlabId", "gitUrl", "webUrl"]);
+                if (visibility && levels.includes(visibility) && levels.includes(layerID.visibility)) {
+                    acc.push(Object.assign(Object.assign({}, rest), { visibility, layerID: layerID._id, accessLevel: 'guest' }));
+                }
+                return acc;
+            }, []);
+            req.repos = reposBaseOnLevel;
+            return next();
+        }
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getLayerReposDataBaseOnAccess = getLayerReposDataBaseOnAccess;
+const getCreatedReposDates = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    const { startDate, endDate } = req.query;
+    try {
+        const repos = yield repoSchema_1.default.find({ creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+            .select('_id name createdAt creator layerID projectID')
+            .populate('layerID', 'name')
+            .populate('projectID', 'name')
+            .lean();
+        req.createdRepos = repos;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getCreatedReposDates = getCreatedReposDates;
+const geProjectCreatedReposDates = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectId } = req.params;
+    const { startDate, endDate, uid } = req.query;
+    try {
+        const repos = yield repoSchema_1.default.find({ projectID: projectId, creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+            .select('_id name createdAt creator layerID projectID')
+            .populate('layerID', 'name')
+            .populate('projectID', 'name')
+            .lean();
+        req.createdRepos = repos;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.geProjectCreatedReposDates = geProjectCreatedReposDates;
 //# sourceMappingURL=repository-middlewares.js.map

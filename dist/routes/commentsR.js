@@ -25,10 +25,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const commentController = __importStar(require("../controllers/comments"));
+const validateJWT_1 = require("../middlewares/validateJWT");
 const router = (0, express_1.Router)();
 router.post('/create-comment', commentController.createCommentOrReply);
 // router.get( '/get-comments/:projectId', commentController.getAllComments  );
-router.get('/get-comments/:projectId', commentController.getAllComments);
+router.get('/get-comments/:projectId', [validateJWT_1.validateJWT], commentController.getAllComments);
 router.get('/get-replies/:commentId', commentController.getCommentReplies);
 router.put('/like-comment', commentController.updateComment);
 router.put('/delete-comment/:id', commentController.deleteComment);

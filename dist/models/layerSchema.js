@@ -41,7 +41,7 @@ const LayerSchema = new mongoose_1.Schema({
         ref: 'User',
         required: true
     },
-});
+}, { timestamps: true });
 const Layer = (0, mongoose_1.model)('Layer', LayerSchema);
 exports.default = Layer;
 //# sourceMappingURL=layerSchema.js.map

@@ -44,49 +44,29 @@ export const getProjects = async(req: Request, res: Response) => {
 };
 
 
+
 export const postProject = async(req: Request, res: Response) => {
 
-    const { name, ...rest  } = req.body
-    if( !name || !rest.description || !rest.endDate ) return res.status(400).json({
-        msg: 'Faltan campos por llenar'
-    })
-
-    
-
-
-    const project = await Project.find({ name })
-    if(project.length > 0) return res.status(400).json({
-        msg: 'This project\'s name already exist, choose another one'
-    })
-
+    const { project } = req
+    const { readmeContent } = req.body
 
     try {
-        const project = new Project( { name, ...rest } )
-        await project.save()
+        const readme = new Readme({ project: project._id, content: readmeContent })
+        await readme.save()
 
-        const updatedUser = await User.findByIdAndUpdate( 
-            req.uid,
-            { $push: { createdProjects: project._id } }, 
-            { new: true } )
+        await Project.findByIdAndUpdate( project._id, { readme: readme._id }, { new: true } )
 
-        const projectRepoDir = path.join(__dirname, '..', '..', 'repos', `${project._id}`);
-
-        if (!fs.existsSync(projectRepoDir)) {
-            fs.mkdirSync(projectRepoDir);
-        }
         res.json({
             project,
-            updatedUser,
-            msg: 'Proyect created'
+            message: 'Your project has been created successfully!'
         })
     } catch (error) {
-        console.log(rest)
+        console.log(error)
         res.status(400).json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         })
     }
-
 }; 
 
 
@@ -107,32 +87,31 @@ export const getProject = async(req: Request, res: Response) => {
 
 
 
+
 export const getProjectById = async(req: Request, res: Response) => {
-
-    const { projectId } = req.params
-
-    console.log(projectId)
-
+   
+    const { accessLevel } = req
+    const { projectID } = req.params
 
     try {
-
-        if( !projectId ) return res.status(400).json({
-            msg: 'Project id is required'
+        if( !projectID ) return res.status(400).json({
+            success: false,
+            message: 'Project id is required'
         });
 
-        const project = await Project.findById( projectId );
+        const project = await Project.findById( projectID )
 
         return res.json({
-            project
+            project, 
+            accessLevel: accessLevel ? accessLevel : null
         });
 
     } catch (error) {
         return res.json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         })
-    }
-
+    };
 }; 
 
 
@@ -277,6 +256,29 @@ export const response = async(req: Request, res: Response) => {
 
 
 
+export const prjInvitationCallback = async(req: Request, res: Response) => {
+    const { requestStatus } = req.body
+    try {
+        if( requestStatus === 'accept') {
+            res.json({
+                message: 'Invitation accepted',
+                accepted: true
+            });
+        } else {
+            res.json({
+                message: 'Invitation rejected',
+                accepted: false
+            });
+        }  
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal Server Error',
+            error: error.message
+        });      
+    }
+}
+
+
 export const getProjectActivityData = async(req: Request, res: Response) => {
     const { projectID } = req.params;
 
@@ -344,5 +346,14 @@ export const handlePrJCollaboratorInvitation = async( req: Request, res: Respons
         });
     }
 
+
+}
+
+
+
+export const getMyProjectTimelineActivity = async( req: Request, res: Response ) => {
+
+    const { projectId } = req.params
+    const { uid } = req.query
 
 }

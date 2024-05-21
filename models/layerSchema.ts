@@ -40,7 +40,7 @@ const LayerSchema = new Schema({
         ref: 'User',
         required: true
     },
-});
+}, { timestamps: true });
 
 const Layer = model('Layer', LayerSchema);
 

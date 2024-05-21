@@ -18,7 +18,6 @@ export const generateJWT = ( uid: string, state: boolean ) => {
         }
 
         jwt.sign( 
-
             payload,  
             privateKey, 
             { algorithm: 'RS256', expiresIn: "5hr" },

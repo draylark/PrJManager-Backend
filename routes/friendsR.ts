@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as friendsController from '../controllers/friends'
-
+import { validateJWT } from '../middlewares/validateJWT';
 
 const router = Router();
 
@@ -9,10 +9,10 @@ const router = Router();
 router.get('/get-friends/:uid', friendsController.getFriends)
 
 
-router.post('/add-friend/:requestedUID', friendsController.addFriend)
+router.post('/friend-request/:requestedUID', friendsController.newFriendRequest)
 
 
-router.post('/handle-request/:requesterID', friendsController.manageFriendsRequests)
+router.put('/handle-friend-request/:requesterID', [validateJWT], friendsController.handleFriendRequest)
 
 
 export default router;

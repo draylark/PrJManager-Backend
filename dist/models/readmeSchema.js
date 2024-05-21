@@ -10,7 +10,7 @@ const ReadmeSchema = new mongoose_1.Schema({
     },
     title: {
         type: String,
-        required: true
+        default: 'Readme.md',
     },
     content: {
         type: String,

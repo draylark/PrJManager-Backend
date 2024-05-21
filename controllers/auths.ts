@@ -109,6 +109,10 @@ const googlePostLogin = async( req: Request, res: Response ) => {
     try {
 
         const user = await User.findOne( { email } )
+                            .populate({
+                                path: 'topProjects',
+                                select: '_id name'
+                            });
 
         // ! verificar si el email existe
 

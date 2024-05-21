@@ -1,6 +1,14 @@
 import { Schema, model } from "mongoose";
 
 
+const noteSchema = new Schema({
+  text: {
+    type: String,
+    default: null
+  },
+});
+
+
 const TaskSchema = new Schema({
 
   type: {
@@ -9,8 +17,9 @@ const TaskSchema = new Schema({
     required: true
   },
 
-  layer_number_task: { 
-    type: String, required: true 
+  repository_number_task: {
+    type: String,
+    default: null
   },
 
   task_name: { 
@@ -39,6 +48,7 @@ const TaskSchema = new Schema({
     required: true
   },
 
+
   goals: [{ type: String }],
 
   commits_hashes: [{ 
@@ -47,9 +57,8 @@ const TaskSchema = new Schema({
 
   status: { 
     type: String, 
-    required: true,
     enum: ['pending', 'approval', 'completed'],
-    default: 'completed'
+    default: 'pending'
   },
 
   priority: {
@@ -59,24 +68,83 @@ const TaskSchema = new Schema({
   },
   conclusion_date: { type: Date },
 
-  deadline: { 
-    type: Date, 
-    default: null 
-  },
-
   additional_info: {
-    estimated_hours: { type: Number },
-    actual_hours: { type: Number },
-    notes: [{ type: String }],
-  },
+    estimated_hours: { 
+      type: Number, 
+      default: 0
+     },
+    actual_hours: { 
+      type: Number, 
+      default: 0
+     },
+    notes: [{ 
+      type: String,
+      default: null 
+    }],
+
+  },    
+  reasons_for_rejection: [
+      {
+        uid: {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+          required: true
+        },        
+        text: {
+          type: String,
+          required: true
+        },
+        date: {
+          type: Date,
+          default: Date.now
+        }
+      }
+  ],
   assigned_to: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     default: null
   },
-  contributorsIds: [{ 
-    type: String 
+  
+  contributorsIds: [{
+    type: Schema.Types.ObjectId,
+    ref: 'User'
   }],
+
+  readyContributors: [{
+    uid: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    date: {
+      type: Date,
+      default: Date.now
+    },
+    me: {
+      type: Boolean,
+      default: false
+    }
+  }],
+
+  reviewSubmissionDate:{
+    type: Date, 
+    default: null 
+  },
+  deadline: { 
+    type: Date, 
+    default: null 
+  },
+
+  completed_at: {
+    type: Date,
+    default: null
+  },
+  creator: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
 }, { timestamps: true });
 
 

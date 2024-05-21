@@ -125,6 +125,36 @@ export const putUsers = async( req: Request, res: Response ) => {
 
 
 
+export const updateUserTopProjects = async( req: Request, res: Response ) => {
+
+    const { uid } = req.params
+    const { currentTopProjects: topProjects } = req.body
+
+    try {
+
+        const user = await User.findByIdAndUpdate( uid, { topProjects }, { new: true } )
+                            .populate({
+                                path: 'topProjects',
+                                select: '_id name'
+                            })
+
+        res.json({
+            response: 'Top projects updated successfully!',
+            user
+        })
+
+    } catch (error) {
+        return res.status(500).json({
+            msg: 'Internal server Error3',
+            error
+        })
+    }
+
+};
+
+
+
+
 export const deleteUsers = async( req: Request, res: Response ) => {
 
     const { id } = req.params
@@ -139,3 +169,61 @@ export const deleteUsers = async( req: Request, res: Response ) => {
 }; 
 
 
+
+
+export const updateMyLinks = async( req: Request, res: Response ) => {
+
+    const { uid } = req.params
+    const { website, github, twitter, linkedin } = req.body
+
+    try {
+        const user = await User.findByIdAndUpdate( uid, { website, github, twitter, linkedin }, { new: true } )
+        res.json({
+            user
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Internal server Error4',
+            error
+        })
+    }
+
+};
+
+
+
+export const getMyMonthlyActivity = async( req: Request, res: Response ) => {
+    const { projectsLength, commitsLength, completedTasksLength } = req
+
+    return res.json({
+        projectsLength,
+        commitsLength,
+        completedTasksLength
+    });
+}
+
+
+export const getTimelineActivity = async( req: Request, res: Response ) => {
+    const { allEvents } = req
+
+    try {
+        res.json(allEvents);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal server error'
+        });
+    }
+}
+export const getProjectTimelineActivity = async( req: Request, res: Response ) => {
+    const { allEvents } = req
+
+    try {
+        res.json(allEvents);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal server error'
+        });
+    }
+}

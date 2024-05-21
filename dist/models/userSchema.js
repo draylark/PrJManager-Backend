@@ -38,6 +38,27 @@ const UserSchema = new mongoose_1.Schema({
         type: String,
         default: null
     },
+    github: {
+        type: String,
+        default: null
+    },
+    twitter: {
+        type: String,
+        default: null
+    },
+    linkedin: {
+        type: String,
+        default: null
+    },
+    projects: {
+        type: Number,
+        default: 0
+    },
+    topProjects: {
+        type: [mongoose_1.Schema.Types.ObjectId],
+        ref: 'Project',
+        default: []
+    },
     state: {
         type: Boolean,
         default: true

@@ -18,7 +18,6 @@ const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
 const validateProjectExistance = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.body;
-    console.log('projectID', projectID);
     try {
         if (!projectID)
             res.status(400).json({
@@ -30,7 +29,6 @@ const validateProjectExistance = (req, res, next) => __awaiter(void 0, void 0, v
                 success: false,
                 message: 'Project not found, the repository cannot be created if the project was deleted or closed, please check if the project exists or consult with the owner of the project, if the error persists, please report the error to the PrJ Team.'
             });
-        console.log('project encontrado', project);
         next();
     }
     catch (error) {
@@ -55,7 +53,6 @@ const validateLayerExistance = (req, res, next) => __awaiter(void 0, void 0, voi
                 success: false,
                 message: 'Layer not found, the repository cannot be created if the layer was deleted or closed, please check if the layer exists or consult with the owner of the project or the layer, if the error persists, please report the error to the PrJ Team.'
             });
-        console.log('layer encontrada', layer);
         req.gitlabGroupID = layer.gitlabId;
         next();
     }
@@ -70,7 +67,6 @@ const validateLayerExistance = (req, res, next) => __awaiter(void 0, void 0, voi
 exports.validateLayerExistance = validateLayerExistance;
 const validateRepositoryExistance = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
-    console.log('repoID', repoID);
     try {
         if (!repoID)
             res.status(400).json({
@@ -82,7 +78,6 @@ const validateRepositoryExistance = (req, res, next) => __awaiter(void 0, void 0
                 success: false,
                 message: 'Repository not found, the repository cannot be created if the repository was deleted or closed, please check if the repository exists or consult with the owner of the project or the repository, if the error persists, please report the error to the PrJ Team.'
             });
-        console.log('repository encontrada', repository === null || repository === void 0 ? void 0 : repository.gitlabId);
         req.repoGitlabID = repository.gitlabId;
         next();
     }

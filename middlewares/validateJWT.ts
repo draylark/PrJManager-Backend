@@ -13,60 +13,120 @@ interface MyJwtPayload extends JwtPayload {
   }
 
 
-export const validateJWT = async( req: Request, res: Response, next: NextFunction ) => {
-
+  export const validateJWT = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers['authorization'];
 
-    if( !token ){
+    if (!token) {
         return res.status(400).json({
             state: false,
             success: false,
-            message: 'No hay token un token valido en la peticion',
-            type: 'no-token'
-        });
-    }
-
-    if( token === undefined ){
-        return res.status(400).json({
-            state: false,
-            success: false,
-            message: 'No hay token un token valido en la peticion',
+            message: 'There is no valid token in the request',
             type: 'no-token'
         });
     }
 
     try {
-        
-        const publicKeyPath = path.join(process.cwd(), 'keys', 'public_key.pem')
+        const publicKeyPath = path.join(process.cwd(), 'keys', 'public_key.pem');
         const publicKey = readFileSync(publicKeyPath, 'utf8');
-        
-        if( !publicKey) return res.status(400).json({ msg: 'Enviroment variable has not been set'})
-        const response = jwt.verify( token, publicKey, { algorithms: ['RS256'] }  ) as MyJwtPayload
 
+        if (!publicKey) {
+            return res.status(500).json({
+                message: 'Public key not found',
+                type: 'server-error'
+            });
+        }
 
-        const user = await User.findById( response.uid )
-        if( !user ) return res.status(401).json({
+        const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] }) as MyJwtPayload;
+
+        const user = await User.findById(decoded.uid).populate({
+            path: 'topProjects',
+            select: '_id name'
+        });
+
+        if (!user) {
+            return res.status(401).json({
                 state: false,
                 success: false,
                 message: 'The user does not exist',
                 type: 'user-validation'
-        });
-        
+            });
+        }
 
-        req.authenticatedUser = user
+        req.authenticatedUser = user;
         req.user = user
-        req.uid =  response.uid
-        
-        next()
-
+        req.uid = decoded.uid;
+        next();
     } catch (error) {
-        return res.status(401).json({
-            state: false,
-            success: false,
-            message: 'Token not valid',
-            type: 'token-validation'
+        if (error instanceof jwt.JsonWebTokenError) {
+            // Catch JWT specific errors
+            return res.status(401).json({
+                state: false,
+                success: false,
+                message: 'The access token is not valid or your session has ended, restart the page and log in again.',
+                type: 'token-validation'
+            });
+        }
+        // Other errors (e.g., DB access issues, file read errors)
+        console.error('Server Error:', error);
+        return res.status(500).json({
+            message: 'Internal Server Error',
+            type: 'server-error'
         });
-
     }
-
 };
+
+// export const validateJWT = async( req: Request, res: Response, next: NextFunction ) => {
+
+//     const token = req.headers['authorization'];
+
+
+//     if( !token ){
+//         return res.status(400).json({
+//             state: false,
+//             success: false,
+//             message: 'There is no valid token in the request',
+//             type: 'no-token'
+//         });
+//     }
+
+
+    
+//     try {
+        
+//         const publicKeyPath = path.join(process.cwd(), 'keys', 'public_key.pem')
+//         const publicKey = readFileSync(publicKeyPath, 'utf8');
+        
+//         if( !publicKey) return res.status(400).json({ msg: 'Enviroment variable has not been set'})
+//         const response = jwt.verify( token, publicKey, { algorithms: ['RS256'] }  ) as MyJwtPayload
+
+
+//         const user = await User.findById( response.uid )
+//                             .populate({
+//                                 path: 'topProjects',
+//                                 select: '_id name'
+//                             })
+                            
+//         if( !user ) return res.status(401).json({
+//                 state: false,
+//                 success: false,
+//                 message: 'The user does not exist',
+//                 type: 'user-validation'
+//         });
+        
+
+//         req.authenticatedUser = user
+//         req.user = user
+//         req.uid =  response.uid
+        
+//         next()
+
+//     } catch (error) {
+//         return res.status(401).json({
+//             state: false,
+//             success: false,
+//             message: 'The access token is not valid or your session has ended, restart the page and log in again.',
+//             type: 'token-validation'
+//         });
+
+//     }
+// };

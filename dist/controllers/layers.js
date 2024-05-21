@@ -64,7 +64,7 @@ exports.createLayer = createLayer;
 const getLayersByProjectId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const { owner, layers } = req;
-    const uid = req.user._id;
+    const uid = req.query.uid;
     try {
         if (owner && owner === true) {
             const layers = yield layerSchema_1.default.find({ project: projectID });

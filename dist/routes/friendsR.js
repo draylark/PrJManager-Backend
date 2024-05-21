@@ -25,9 +25,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const friendsController = __importStar(require("../controllers/friends"));
+const validateJWT_1 = require("../middlewares/validateJWT");
 const router = (0, express_1.Router)();
 router.get('/get-friends/:uid', friendsController.getFriends);
-router.post('/add-friend/:requestedUID', friendsController.addFriend);
-router.post('/handle-request/:requesterID', friendsController.manageFriendsRequests);
+router.post('/friend-request/:requestedUID', friendsController.newFriendRequest);
+router.put('/handle-friend-request/:requesterID', [validateJWT_1.validateJWT], friendsController.handleFriendRequest);
 exports.default = router;
 //# sourceMappingURL=friendsR.js.map

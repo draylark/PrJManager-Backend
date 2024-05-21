@@ -19,12 +19,21 @@ const dbConnection = () => __awaiter(void 0, void 0, void 0, function* () {
         if (!mongoUri) {
             throw new Error('MONGO_CNN environment variable is not defined');
         }
-        yield mongoose_1.default.connect(mongoUri);
+        const options = {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
+            retryWrites: true,
+            retryReads: true // Habilita los reintentos automáticos en operaciones de lectura
+        };
+        yield mongoose_1.default.connect(mongoUri, options);
         console.log('Base de datos inicializada');
     }
     catch (error) {
-        console.warn('Theres been an error while initializing the DB.');
+        console.warn('There has been an error while initializing the DB.');
         console.error(error);
+        setTimeout(dbConnection, 5000); // Intenta reconectar cada 5 segundos en caso de falla inicial
     }
 });
 exports.default = dbConnection;

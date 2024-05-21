@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import Friend from '../models/friendSchema'
 import User from '../models/userSchema'
 import Noti from '../models/notisSchema'
+import Friendship from '../models/friendshipSchema'
 
 export const getFriends = async (req: Request, res: Response) => {
   const { uid } = req.params;
@@ -33,88 +34,88 @@ export const getFriend = async (req: Request, res: Response) => {
 
 }
 
-export const addFriend = async (req: Request, res: Response) => {
+export const newFriendRequest = async (req: Request, res: Response) => {
 
   const { requestedUID } = req.params
   const { uid, username, photoUrl } = req.body
 
     try {
-      const f = new Friend({ 
-        friends_reference: [ requestedUID, uid ],
+      const friendship = new Friendship({
         requester: uid,
         recipient: requestedUID,
-      })
-      f.save()
+        status: 'pending'
+      });
+      await friendship.save();
 
       const noti = new Noti({
         type: 'friend-request',
         title: 'Friend request',
         description: `You have a new friend request`,
+        recipient: requestedUID,
         from: {
           ID: uid,
           name: username,
           photoUrl: photoUrl || null
         },
-        recipient: requestedUID,
-        state: false
+        additionalData: {
+          ref: friendship._id
+        },
       })
-      noti.save()
+      await noti.save()
 
       return res.json({
-        msg: 'Friend request sent',
-        noti,
-        f
+        message: 'Friend request sent',
+        success: true
       })
-
     } catch (error){
       return res.status(500).json({
-        msg: 'Server error',
+        success: false,
+        message: 'Server error',
         error: error.message
       })
     } 
 
 }
 
-export const manageFriendsRequests = async (req: Request, res: Response) => {
+export const handleFriendRequest = async (req: Request, res: Response) => {
 
-  const { requestStatus, uid, notiID } = req.body
+  const { requestStatus, uid, notiID, ref } = req.body
   const { requesterID } = req.params
 
-  if( requestStatus === 'accept' ){
-
     try {
-      const f = await Friend.findOneAndUpdate({ requester: requesterID, recipient: uid }, { friendship_status: 'accepted', state: true }, { new: true })
-      const noti = await Noti.findByIdAndUpdate( notiID, { status: false }, { new: true })
+      if( requestStatus === 'accept' ){
 
-      return res.json({
-        msg: `Friend request accepted`,
-        new_friend: f,
-        notiTodelete: noti?._id
-      })
+          await Friendship.findOneAndUpdate(
+            { _id: ref, requester: requesterID, recipient: uid, status: 'pending' },
+            { status: 'accepted' }
+          );
 
+          await Noti.findByIdAndUpdate( notiID, { status: false })
+
+          return res.json({
+            accepted: true,
+            message: `Friend request accepted.`,
+          })
+      } else {
+       
+          await Friendship.findOneAndUpdate(
+            { _id: ref, requester: requesterID, recipient: uid, status: 'pending' },
+            { status: 'rejected' }
+          );
+
+          await Noti.findByIdAndUpdate( notiID, { status: false })
+
+          res.json({
+            accepted: false,
+            message: `Friend request rejected.`,
+          })
+      }
     } catch (error){
       return res.status(500).json({
-        msg: 'Server error',
+        message: 'Internal Server Error',
         error: error.message
       })
     } 
-  } else {
-
-    try {
-      const f = await Friend.findOneAndRemove({ requester: requesterID, recipient: uid })
-      const noti = await Noti.findByIdAndUpdate( notiID, { status: false }, { new: true })
-
-      res.json({
-        msg: `Friend request rejected`,
-        notiTodelete: noti?._id
-      })
-
-    } catch (error){
-      return res.status(400).json({
-        msg: 'Bad request'
-      })
-    } 
-  }
 
 }
 

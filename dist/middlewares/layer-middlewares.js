@@ -23,10 +23,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProjectLayersDataBaseOnAccess = exports.updateOtherCDataOfDeletedLayerCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfLayerModifiedCollaborators = exports.updateLayerCollaborators = exports.createOtherCDataOfLayerCreatedCollaborators = exports.newCollaborators = exports.verifyProjectLayers = exports.verifyProjectLevelAccessOfNewCollaborator = exports.validateCollaboratorAccessOnLayer = exports.validateLayerExistance = void 0;
+exports.getProjectCreatedLayersDates = exports.getCreatedLayersDates = exports.getProjectLayersDataBaseOnAccess = exports.updateOtherCDataOfDeletedLayerCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfLayerModifiedCollaborators = exports.updateLayerCollaborators = exports.createOtherCDataOfLayerCreatedCollaborators = exports.newCollaborators = exports.verifyProjectLayers = exports.verifyProjectLevelAccessOfNewCollaborator = exports.validateCollaboratorAccessOnLayer = exports.validateLayerExistance = void 0;
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const layerSchema_1 = __importDefault(require("../models/layerSchema"));
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
+const notisSchema_1 = __importDefault(require("../models/notisSchema"));
 // ! Middlewares Helpers
 const whatIsTheAccess = (accessLevel) => {
     switch (accessLevel) {
@@ -183,6 +184,7 @@ exports.verifyProjectLayers = verifyProjectLayers;
 const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { layerID, projectID } = req.params;
     const { newCollaborators } = req.body;
+    const { layer, project } = req;
     if (newCollaborators.length === 0) {
         req.creatingMiddlewareState = false;
         return next();
@@ -196,6 +198,14 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
             if (existingCollaborator) {
                 if (!existingCollaborator.state) {
                     yield collaboratorSchema_1.default.updateOne({ _id: existingCollaborator._id, 'layer._id': layerID, projectID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'layer.accessLevel': accessLevel } });
+                    const noti = new notisSchema_1.default({
+                        type: 'added-to-layer',
+                        title: 'You have been added to a Layer',
+                        recipient: id,
+                        from: { name: 'System', ID: projectID },
+                        additionalData: { layerId: layerID, layerName: layer.name, projectName: project.name, accessLevel }
+                    });
+                    yield noti.save();
                     totalCreated++;
                 }
                 // Si el colaborador existe y ya está activo, no aumentar totalCreated.
@@ -204,6 +214,14 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                 console.log('new collaborator');
                 const c = new collaboratorSchema_1.default({ uid: id, name, photoUrl, projectID, layer: { _id: layerID, accessLevel }, state: true });
                 yield c.save();
+                const noti = new notisSchema_1.default({
+                    type: 'added-to-layer',
+                    title: 'You have been added to a Layer',
+                    recipient: id,
+                    from: { name: 'System', ID: projectID },
+                    additionalData: { layerId: layerID, layerName: layer.name, projectName: project.name, accessLevel }
+                });
+                yield noti.save();
                 totalCreated++;
             }
         });
@@ -420,8 +438,8 @@ const updateOtherCDataOfDeletedLayerCollaborators = (req, res, next) => __awaite
 exports.updateOtherCDataOfDeletedLayerCollaborators = updateOtherCDataOfDeletedLayerCollaborators;
 // ! Collaborator Propper Data Return based on access level
 const getProjectLayersDataBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const uid = req.query.uid;
     const { projectID } = req.params;
-    const uid = req.user._id;
     const { owner, levels, type } = req;
     if (owner && owner === true) {
         return next();
@@ -467,4 +485,44 @@ const getProjectLayersDataBaseOnAccess = (req, res, next) => __awaiter(void 0, v
     }
 });
 exports.getProjectLayersDataBaseOnAccess = getProjectLayersDataBaseOnAccess;
+const getCreatedLayersDates = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    const { startDate, endDate } = req.query;
+    try {
+        const layers = yield layerSchema_1.default.find({ creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+            .select('creator createdAt name _id project')
+            .populate('project', 'name _id')
+            .lean();
+        req.createdLayers = layers;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getCreatedLayersDates = getCreatedLayersDates;
+const getProjectCreatedLayersDates = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectId } = req.params;
+    const { startDate, endDate, uid } = req.query;
+    try {
+        const layers = yield layerSchema_1.default.find({ project: projectId, creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+            .select('creator createdAt name _id project')
+            .populate('project', 'name _id')
+            .lean();
+        req.createdLayers = layers;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getProjectCreatedLayersDates = getProjectCreatedLayersDates;
 //# sourceMappingURL=layer-middlewares.js.map

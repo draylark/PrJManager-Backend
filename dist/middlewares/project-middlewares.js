@@ -8,11 +8,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.returnDataBaseOnAccessLevel = exports.updateOtherCollaboratorDataOfDeletedCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfProjectModifiedCollaborators = exports.updateCollaborators = exports.handlePrJCollaboratorInvitation = exports.createOtherCDataOfProjectCreatedCollaborators = exports.newCollaborators = exports.itIsTheOwner = exports.ownerOrCollaborator = exports.validateCollaboratorAccessOnProject = exports.validateUserAccessOnProject = exports.validateProjectExistance = exports.whatIsTheAccess = void 0;
+exports.getCreatedProjectsDates = exports.getProjectsLength = exports.returnDataBaseOnAccessLevel = exports.updateOtherCollaboratorDataOfDeletedCollaborators = exports.deleteCollaborators = exports.updateOtherCDataOfProjectModifiedCollaborators = exports.updateCollaborators = exports.handlePrJCollaboratorInvitation = exports.createOtherCDataOfProjectCreatedCollaborators = exports.newCollaborators = exports.itIsTheOwner = exports.ownerOrCollaborator = exports.validateCollaboratorAccessOnProject = exports.validateUserAccessOnProject = exports.validateUserAccessBaseOnProjectVisibility = exports.validateUserProjects = exports.validateProjectVisibility = exports.validateProjectExistance = exports.createProject = exports.whatIsTheAccess = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const layerSchema_1 = __importDefault(require("../models/layerSchema"));
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
@@ -75,7 +86,27 @@ const appropiateLevelAccessOnRepo = (accessLevel) => {
     }
     ;
 };
-// ! Validation
+// ! Project Crud
+const createProject = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const _a = req.body, { readmeContent } = _a, rest = __rest(_a, ["readmeContent"]);
+    const { uid } = req.query;
+    try {
+        const project = new projectSchema_1.default(Object.assign(Object.assign({}, rest), { owner: uid }));
+        yield project.save();
+        yield userSchema_1.default.findByIdAndUpdate(uid, { $inc: { projects: 1 } }, { new: true });
+        req.project = project;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.createProject = createProject;
+// ! Project Validation
 const validateProjectExistance = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const project = yield projectSchema_1.default.findById(projectID);
@@ -92,6 +123,93 @@ const validateProjectExistance = (req, res, next) => __awaiter(void 0, void 0, v
     next();
 });
 exports.validateProjectExistance = validateProjectExistance;
+const validateProjectVisibility = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { project } = req;
+    const { uid } = req.query;
+    if (project.owner.toString() === uid) {
+        req.owner = true;
+        return next();
+    }
+    try {
+        if (project.visibility === 'public') {
+            req.type = 'public';
+            req.owner = false;
+            return next();
+        }
+        else {
+            req.type = 'private';
+            req.owner = false;
+            return next();
+        }
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+    ;
+});
+exports.validateProjectVisibility = validateProjectVisibility;
+const validateUserProjects = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.query;
+    const projects = yield projectSchema_1.default.find({ owner: uid });
+    if (projects.length >= 3) {
+        return res.status(400).json({
+            success: false,
+            message: 'You have reached the limit of projects you can create.',
+            type: 'projects-limit'
+        });
+    }
+    next();
+});
+exports.validateUserProjects = validateUserProjects;
+// ! Collaborator Validation
+const validateUserAccessBaseOnProjectVisibility = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { project } = req;
+    const { uid } = req.query;
+    const { projectID } = req.params;
+    if (project.owner.toString() === uid) {
+        req.owner = true;
+        return next();
+    }
+    try {
+        const collaborator = yield collaboratorSchema_1.default.findOne({ uid, projectID, state: true, 'project._id': projectID });
+        if (project.visibility === 'public') {
+            if (!collaborator) {
+                req.accessLevel = 'guest';
+                return next();
+            }
+            else {
+                req.accessLevel = collaborator.project.accessLevel;
+                return next();
+            }
+        }
+        else {
+            if (!collaborator) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This project is private and you do not have access as collaborator.',
+                    type: 'collaborator-validation'
+                });
+            }
+            else {
+                req.accessLevel = collaborator.project.accessLevel;
+                return next();
+            }
+        }
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+    ;
+});
+exports.validateUserAccessBaseOnProjectVisibility = validateUserAccessBaseOnProjectVisibility;
 const validateUserAccessOnProject = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { project } = req;
     const uid = req.query.uid;
@@ -217,6 +335,7 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                 recipient: collaborator.id,
                 from: { name: req.user.username, ID: req.user._id, photoUrl: req.user.photoUrl || null },
                 additionalData: {
+                    date: new Date(),
                     project_name: project.name,
                     projectID: projectID,
                     accessLevel: collaborator.accessLevel,
@@ -276,7 +395,6 @@ const createOtherCDataOfProjectCreatedCollaborators = (req, res, next) => __awai
             }
             else {
                 if (levels.includes(repo.visibility) && levels.includes(visibility)) {
-                    console.log('Creando nuevo colaborador en repo');
                     const c = new collaboratorSchema_1.default({ uid, name, projectID, photoUrl, repository: { _id: repo._id, accessLevel: appropiateLevelAccessOnRepo(accessLevel) }, state: true });
                     yield c.save();
                 }
@@ -311,6 +429,7 @@ const handlePrJCollaboratorInvitation = (req, res, next) => __awaiter(void 0, vo
             else {
                 const c = new collaboratorSchema_1.default({ uid, name, photoUrl, projectID, project: { _id: projectID, accessLevel }, state: true });
                 yield c.save();
+                yield notisSchema_1.default.findByIdAndUpdate(notiID, { status: false });
                 return next();
             }
         }
@@ -546,4 +665,45 @@ const returnDataBaseOnAccessLevel = (req, res, next) => __awaiter(void 0, void 0
     }
 });
 exports.returnDataBaseOnAccessLevel = returnDataBaseOnAccessLevel;
+// ! Project(s) Data
+const getProjectsLength = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    try {
+        const myProjects = yield projectSchema_1.default.find({ owner: uid })
+            .select('_id');
+        const collaboratorProjects = yield collaboratorSchema_1.default.find({ uid, state: true, 'project._id': { $exists: true } })
+            .select('_id');
+        const projectsLength = myProjects.length + collaboratorProjects.length;
+        req.projectsLength = projectsLength;
+        next();
+    }
+    catch (error) {
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getProjectsLength = getProjectsLength;
+const getCreatedProjectsDates = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    const { startDate, endDate } = req.query;
+    try {
+        const createdProjects = yield projectSchema_1.default.find({
+            owner: uid,
+            createdAt: { $gte: startDate, $lte: endDate }
+        })
+            .select('_id name createdAt owner');
+        req.createdProjects = createdProjects;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getCreatedProjectsDates = getCreatedProjectsDates;
 //# sourceMappingURL=project-middlewares.js.map

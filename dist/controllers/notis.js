@@ -37,12 +37,38 @@ const postNoti = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.postNoti = postNoti;
 const getNotisbyUserId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userid = req.params.id;
+    const { uid } = req.params;
+    const { limit = 10, from = 0, type } = req.query;
+    const general = ['project-invitation', 'friend-request', 'new-follower', 'prj-updates', 'prj-patches', 'prj-announcements'];
+    const activity = ['new-commit',
+        'new-task-commit', 'task-assignation', 'task-rejected', 'task-approved', 'task-invitation', 'added-to-repo', 'added-to-layer'];
     try {
-        const notis = yield notisSchema_1.default.find({ recipient: userid, status: true });
-        return res.json({
-            notis
-        });
+        if (type === 'general') {
+            const notis = yield notisSchema_1.default.find({
+                type: { $in: general },
+                recipient: uid,
+                status: true
+            })
+                .sort({ createdAt: -1 })
+                .skip(Number(from))
+                .limit(Number(limit));
+            return res.json({
+                notis
+            });
+        }
+        else {
+            const notis = yield notisSchema_1.default.find({
+                type: { $in: activity },
+                recipient: uid,
+                status: true
+            })
+                .sort({ createdAt: -1 })
+                .skip(Number(from))
+                .limit(Number(limit));
+            return res.json({
+                notis
+            });
+        }
     }
     catch (error) {
         console.log(error.message);

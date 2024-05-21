@@ -28,6 +28,7 @@ const friendSchema = new Schema({
   }
 });
 
+
 const Friend = model('Friend', friendSchema);
 
 export default Friend;

@@ -23,13 +23,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handlePrJCollaboratorInvitation = exports.getProjectActivityData = exports.response = exports.getReadme = exports.getCollaborators = exports.deleteProject = exports.updateProject = exports.getProjectById = exports.getProject = exports.postProject = exports.getProjects = void 0;
+exports.getMyProjectTimelineActivity = exports.handlePrJCollaboratorInvitation = exports.getProjectActivityData = exports.prjInvitationCallback = exports.response = exports.getReadme = exports.getCollaborators = exports.deleteProject = exports.updateProject = exports.getProjectById = exports.getProject = exports.postProject = exports.getProjects = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
-const userSchema_1 = __importDefault(require("../models/userSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const readmeSchema_1 = __importDefault(require("../models/readmeSchema"));
 const commitSchema_1 = __importDefault(require("../models/commitSchema"));
 const notisSchema_1 = __importDefault(require("../models/notisSchema"));
@@ -62,34 +59,21 @@ const getProjects = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.getProjects = getProjects;
 const postProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const _a = req.body, { name } = _a, rest = __rest(_a, ["name"]);
-    if (!name || !rest.description || !rest.endDate)
-        return res.status(400).json({
-            msg: 'Faltan campos por llenar'
-        });
-    const project = yield projectSchema_1.default.find({ name });
-    if (project.length > 0)
-        return res.status(400).json({
-            msg: 'This project\'s name already exist, choose another one'
-        });
+    const { project } = req;
+    const { readmeContent } = req.body;
     try {
-        const project = new projectSchema_1.default(Object.assign({ name }, rest));
-        yield project.save();
-        const updatedUser = yield userSchema_1.default.findByIdAndUpdate(req.uid, { $push: { createdProjects: project._id } }, { new: true });
-        const projectRepoDir = path_1.default.join(__dirname, '..', '..', 'repos', `${project._id}`);
-        if (!fs_1.default.existsSync(projectRepoDir)) {
-            fs_1.default.mkdirSync(projectRepoDir);
-        }
+        const readme = new readmeSchema_1.default({ project: project._id, content: readmeContent });
+        yield readme.save();
+        yield projectSchema_1.default.findByIdAndUpdate(project._id, { readme: readme._id }, { new: true });
         res.json({
             project,
-            updatedUser,
-            msg: 'Proyect created'
+            message: 'Your project has been created successfully!'
         });
     }
     catch (error) {
-        console.log(rest);
+        console.log(error);
         res.status(400).json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         });
     }
@@ -108,24 +92,27 @@ const getProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 });
 exports.getProject = getProject;
 const getProjectById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { projectId } = req.params;
-    console.log(projectId);
+    const { accessLevel } = req;
+    const { projectID } = req.params;
     try {
-        if (!projectId)
+        if (!projectID)
             return res.status(400).json({
-                msg: 'Project id is required'
+                success: false,
+                message: 'Project id is required'
             });
-        const project = yield projectSchema_1.default.findById(projectId);
+        const project = yield projectSchema_1.default.findById(projectID);
         return res.json({
-            project
+            project,
+            accessLevel: accessLevel ? accessLevel : null
         });
     }
     catch (error) {
         return res.json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         });
     }
+    ;
 });
 exports.getProjectById = getProjectById;
 const updateProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -232,6 +219,30 @@ const response = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     });
 });
 exports.response = response;
+const prjInvitationCallback = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { requestStatus } = req.body;
+    try {
+        if (requestStatus === 'accept') {
+            res.json({
+                message: 'Invitation accepted',
+                accepted: true
+            });
+        }
+        else {
+            res.json({
+                message: 'Invitation rejected',
+                accepted: false
+            });
+        }
+    }
+    catch (error) {
+        res.status(500).json({
+            message: 'Internal Server Error',
+            error: error.message
+        });
+    }
+});
+exports.prjInvitationCallback = prjInvitationCallback;
 const getProjectActivityData = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     try {
@@ -291,4 +302,9 @@ const handlePrJCollaboratorInvitation = (req, res) => __awaiter(void 0, void 0, 
     }
 });
 exports.handlePrJCollaboratorInvitation = handlePrJCollaboratorInvitation;
+const getMyProjectTimelineActivity = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectId } = req.params;
+    const { uid } = req.query;
+});
+exports.getMyProjectTimelineActivity = getMyProjectTimelineActivity;
 //# sourceMappingURL=projects.js.map

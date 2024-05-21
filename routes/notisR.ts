@@ -9,7 +9,7 @@ import { isIdExist } from '../helpers/dvValidators';
 const router = Router()
 
 
-router.get('/:id', getNotisbyUserId);
+router.get('/:uid', getNotisbyUserId);
 
 router.post('/', postNoti);
 

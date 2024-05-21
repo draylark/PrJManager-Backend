@@ -106,6 +106,80 @@ export const getProyectCommits = async (req: Request, res: Response) => {
             message: 'Internal Server Error'
         });
     }
+};
+
+
+export const getRepoCommits = async (req: Request, res: Response) => {
+    const { repoID } = req.params;
+    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+
+    try {
+
+        let matchConditions = { repository: repoID };
+        if( year ){
+          matchConditions = {
+            ...matchConditions,
+            createdAt: {
+              $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+              $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+            }
+          };
+        }
+
+        const commits = await Commit.find(matchConditions)
+                .populate({
+                  path: 'associated_task',
+                  select: '_id task_name'
+                })
+                .select('-hash')
+                .sort({ createdAt: -1 });
+
+        return res.json({
+            commits
+        });
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
 }
 
 
+
+export const getCommitsForDashboard = async (req: Request, res: Response) => {
+
+  const { startDate, endDate, uid } = req.query;
+
+  console.log(startDate, endDate, uid)
+
+  try {
+
+      let matchConditions = { 'author.uid': uid };
+
+      if (startDate && endDate) {
+        matchConditions['createdAt'] = {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate)
+        }
+    }
+
+    console.log(matchConditions)
+
+      const commits = await Commit.find(matchConditions)  
+              .select('_id message createdAt')
+              .sort({ createdAt: -1 });
+
+      return res.json({
+          commits
+      });
+
+  } catch (error) {
+      console.log(error)
+      res.status(500).json({
+          message: 'Internal Server Error'
+      });
+  }
+
+}

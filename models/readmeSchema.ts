@@ -9,7 +9,7 @@ const ReadmeSchema = new Schema({
     },
     title: {
         type: String,
-        required: true
+        default: 'Readme.md',
     },
    content: {
         type: String,

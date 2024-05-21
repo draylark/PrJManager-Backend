@@ -29,27 +29,27 @@ const validateJWT_1 = require("../middlewares/validateJWT");
 const project_middlewares_1 = require("../middlewares/project-middlewares");
 const layer_middlewares_1 = require("../middlewares/layer-middlewares");
 const router = (0, express_1.Router)();
-router.get('/get-layer/:layerID', layerController.getLayersById);
 router.post('/create-layer/:projectID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
     (0, project_middlewares_1.validateCollaboratorAccessOnProject)(['administrator', 'manager']),
     layer_middlewares_1.verifyProjectLayers
 ], layerController.createLayer);
+router.get('/get-layer/:layerID', [
+// validateJWT
+], layerController.getLayersById);
 router.get('/get-layers/:projectID', [
-    validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
     project_middlewares_1.validateUserAccessOnProject,
     layer_middlewares_1.getProjectLayersDataBaseOnAccess
 ], layerController.getLayersByProjectId);
+router.get('/get-layer-collaborators/:layerID', layerController.getLayerCollaborators);
 router.put('/update-layer/:projectID/:layerID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
     layer_middlewares_1.validateLayerExistance,
-    (0, layer_middlewares_1.validateCollaboratorAccessOnLayer)(['administrator']),
+    (0, layer_middlewares_1.validateCollaboratorAccessOnLayer)(['administrator'])
 ], layerController.updateLayer);
-router.delete('/delete-layer/:layerID', layerController.deleteLayer);
-router.post('/add-layer-collaborator/:layerID', layerController.addLayerCollaborator);
 router.put('/collaborators/:projectID/:layerID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
@@ -63,8 +63,6 @@ router.put('/collaborators/:projectID/:layerID', [
     layer_middlewares_1.newCollaborators,
     layer_middlewares_1.createOtherCDataOfLayerCreatedCollaborators
 ], layerController.response);
-router.get('/get-layer-collaborators/:layerID', [
-    validateJWT_1.validateJWT
-], layerController.getLayerCollaborators);
+router.delete('/delete-layer/:layerID', layerController.deleteLayer);
 exports.default = router;
 //# sourceMappingURL=layersR.js.map

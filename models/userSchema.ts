@@ -28,7 +28,28 @@ const UserSchema = new Schema({
         type: String,
         default: null
     },
-     state: {
+    github: {
+        type: String,
+        default: null
+    },
+    twitter: {
+        type: String,
+        default: null
+    },
+    linkedin: {
+        type: String,
+        default: null
+    },
+    projects: {
+        type: Number,
+        default: 0
+    },
+    topProjects: {
+        type: [Schema.Types.ObjectId],
+        ref: 'Project',
+        default: []
+    },
+    state: {
         type: Boolean,
         default: true
     },

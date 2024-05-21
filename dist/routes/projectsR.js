@@ -36,27 +36,24 @@ const validateJWT_1 = require("../middlewares/validateJWT");
 const project_middlewares_1 = require("../middlewares/project-middlewares");
 const router = (0, express_1.Router)();
 router.post('/create-project', [
-    validar_jwt_1.default,
-    (0, express_validator_1.check)('name', 'Name is Required').not().isEmpty(),
-    (0, express_validator_1.check)('description', 'Description is Required').not().isEmpty(),
-    (0, express_validator_1.check)('owner', 'Owner is Required').not().isEmpty(),
-    validar_campos_1.default
+    validateJWT_1.validateJWT,
+    project_middlewares_1.validateUserProjects,
+    project_middlewares_1.createProject
 ], prjController.postProject);
 router.get('/get-project/:userId', prjController.getProject);
-router.get('/get-project-by-id/:projectId', prjController.getProjectById);
+router.get('/get-project-by-id/:projectID', [
+    project_middlewares_1.validateProjectExistance,
+    project_middlewares_1.validateUserAccessBaseOnProjectVisibility
+], prjController.getProjectById);
 router.get('/get-projects/:uid', prjController.getProjects);
+router.get('/collaborators/:projectID', prjController.getCollaborators);
+router.get('/readme/:readmeID', prjController.getReadme);
+router.get('/timeline-activity/:projectId', prjController.getMyProjectTimelineActivity);
 router.put('/update-project/:projectID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
     project_middlewares_1.itIsTheOwner
 ], prjController.updateProject);
-router.delete('/delete-project/:id', [
-    validar_jwt_1.default,
-    (0, express_validator_1.check)('id', 'It is not a valid MongoId').isMongoId(),
-    (0, express_validator_1.check)('id').custom(dvValidators_1.isPrIdExist),
-    validar_campos_1.default
-], prjController.deleteProject);
-router.get('/collaborators/:projectID', prjController.getCollaborators);
 router.put('/collaborators/:projectID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
@@ -66,10 +63,19 @@ router.put('/collaborators/:projectID', [
     project_middlewares_1.updateCollaborators,
     project_middlewares_1.updateOtherCDataOfProjectModifiedCollaborators,
     project_middlewares_1.newCollaborators,
-    // createOtherCDataOfProjectCreatedCollaborators
+    project_middlewares_1.createOtherCDataOfProjectCreatedCollaborators
 ], prjController.response);
-router.put('/handle-invitation/:projectID', [validateJWT_1.validateJWT, project_middlewares_1.validateProjectExistance,
-    project_middlewares_1.handlePrJCollaboratorInvitation, project_middlewares_1.createOtherCDataOfProjectCreatedCollaborators], prjController.response);
-router.get('/readme/:readmeID', prjController.getReadme);
+router.put('/handle-invitation/:projectID', [
+    validateJWT_1.validateJWT,
+    project_middlewares_1.validateProjectExistance,
+    project_middlewares_1.handlePrJCollaboratorInvitation,
+    project_middlewares_1.createOtherCDataOfProjectCreatedCollaborators
+], prjController.prjInvitationCallback);
+router.delete('/delete-project/:id', [
+    validar_jwt_1.default,
+    (0, express_validator_1.check)('id', 'It is not a valid MongoId').isMongoId(),
+    (0, express_validator_1.check)('id').custom(dvValidators_1.isPrIdExist),
+    validar_campos_1.default
+], prjController.deleteProject);
 exports.default = router;
 //# sourceMappingURL=projectsR.js.map

@@ -40,21 +40,19 @@ router.post('/create-repository/:projectID/:layerID', [
     repository_middlewares_1.verifyLayerRepos,
     repository_middlewares_1.createRepoOnGitlab,
     repository_middlewares_1.createRepoOnMongoDB,
-    collaborators_middlewares_1.addNewRepoCollaborators,
+    collaborators_middlewares_1.addNewRepoCollaborators
 ], repoController.createRepository);
-router.get('/', repoController.getRepositories);
-router.get('/:id', repoController.getRepositoryById);
-router.put('/:id', repoController.updateRepository);
-router.delete('/:id', repoController.deleteRepository);
-// Get all repositories by user ID
+router.post('/updateRepos', repoController.updateRepos);
+router.get('/:id', [], repoController.getRepositoryById);
 router.get('/getAllRepos/:userId', repoController.getRepositoriesByUserId);
 router.get('/get-repo-collaborators/:repoId', repoController.getRepoCollaborators);
-router.post('/updateRepos', repoController.updateRepos);
-router.post('/add-repo-collaborator/:projectId', [
+router.get('/get-layer-repos/:projectID/:layerID', [validateJWT_1.validateJWT, project_middlewares_1.validateProjectExistance, project_middlewares_1.validateUserAccessOnProject, repository_middlewares_1.getLayerReposDataBaseOnAccess], repoController.getReposByLayer);
+router.get('/get-repos/:projectID', [
     validateJWT_1.validateJWT,
-    // showRole('manager', 'administrator'),
-    // validarCampos 
-], repoController.addRepoCollaborator);
+    project_middlewares_1.validateProjectExistance,
+    project_middlewares_1.validateUserAccessOnProject,
+    repository_middlewares_1.getProjectReposDataBaseOnAccess
+], repoController.getReposByProject);
 router.put('/update-repository/:projectID/:layerID/:repoID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,
@@ -67,14 +65,6 @@ router.put('/update-repository/:projectID/:layerID/:repoID', [
     repository_middlewares_1.verifyLayerAccessLevelOfNewCollaborator,
     repository_middlewares_1.newCollaborators
 ], repoController.updateRepository);
-router.get('/get-repos/:projectID', [
-    validateJWT_1.validateJWT,
-    project_middlewares_1.validateProjectExistance,
-    project_middlewares_1.validateUserAccessOnProject,
-    repository_middlewares_1.getProjectReposDataBaseOnAccess
-], repoController.getReposByProject);
-router.get('/get-layer-repos/:projectID/:layerID', [validateJWT_1.validateJWT, project_middlewares_1.validateProjectExistance, project_middlewares_1.validateUserAccessOnProject], repoController.getReposByLayer);
-// Donde se encontraba antes: 
-// router.get('/getAllRepos/:userId', getRepositoriesByUserId);
+router.delete('/:id', repoController.deleteRepository);
 exports.default = router;
 //# sourceMappingURL=reposR.js.map

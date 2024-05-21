@@ -61,10 +61,11 @@ export const createLayer = async (req: Request, res: Response) => {
 };
 
 
+
 export const getLayersByProjectId = async (req: Request, res: Response) => {
     const { projectID } = req.params;
     const { owner, layers } = req;
-    const uid = req.user._id;
+    const uid = req.query.uid;
 
     
 

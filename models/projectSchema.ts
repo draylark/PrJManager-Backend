@@ -12,39 +12,25 @@ const ProjectSchema = new Schema({
       type: String,
       required: true
     },
-
-
+    visibility: {
+      type: String,
+      enum: ['public', 'private'],
+      default: 'public'
+    },
     startDate: {
       type: Date,
       default: Date.now
     },
     endDate: {
-      type: Date
+      type: Date,
+      required: true
     },
     lastUpdated: {
       type: Date,
       default: Date.now
     },
 
-
-    status: {
-      type: String,
-      enum: [ 'In Progress', 'Completed', 'On Hold', 'Cancelled' ],
-      default: 'In Progress'
-    },
-    priority: {
-      type: String,
-      enum: ['High', 'Medium', 'Low'],
-      default: 'Medium'
-    },
-    visibility: {
-      type: String,
-      enum: ['public', 'private'],
-      default: 'public'
-    },
-
     tags: [String],
-
 
     collaborators: {
       type: Number,
@@ -71,9 +57,10 @@ const ProjectSchema = new Schema({
       default: 0
     },
 
-    
-    advancedSettings: {
-
+    readme: {
+      type: Schema.Types.ObjectId,
+      ref: 'Readme',
+      default: null
     },
 
     owner: {

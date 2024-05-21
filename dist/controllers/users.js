@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUsers = exports.putUsers = exports.getUsersById = exports.getUsers = exports.findUsers = void 0;
+exports.getProjectTimelineActivity = exports.getTimelineActivity = exports.getMyMonthlyActivity = exports.updateMyLinks = exports.deleteUsers = exports.updateUserTopProjects = exports.putUsers = exports.getUsersById = exports.getUsers = exports.findUsers = void 0;
 const userSchema_1 = __importDefault(require("../models/userSchema"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const findUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -115,6 +115,28 @@ const putUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.putUsers = putUsers;
+const updateUserTopProjects = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    const { currentTopProjects: topProjects } = req.body;
+    try {
+        const user = yield userSchema_1.default.findByIdAndUpdate(uid, { topProjects }, { new: true })
+            .populate({
+            path: 'topProjects',
+            select: '_id name'
+        });
+        res.json({
+            response: 'Top projects updated successfully!',
+            user
+        });
+    }
+    catch (error) {
+        return res.status(500).json({
+            msg: 'Internal server Error3',
+            error
+        });
+    }
+});
+exports.updateUserTopProjects = updateUserTopProjects;
 const deleteUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const { authenticatedUser } = req;
@@ -125,4 +147,56 @@ const deleteUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     });
 });
 exports.deleteUsers = deleteUsers;
+const updateMyLinks = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    const { website, github, twitter, linkedin } = req.body;
+    try {
+        const user = yield userSchema_1.default.findByIdAndUpdate(uid, { website, github, twitter, linkedin }, { new: true });
+        res.json({
+            user
+        });
+    }
+    catch (error) {
+        return res.status(500).json({
+            message: 'Internal server Error4',
+            error
+        });
+    }
+});
+exports.updateMyLinks = updateMyLinks;
+const getMyMonthlyActivity = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectsLength, commitsLength, completedTasksLength } = req;
+    return res.json({
+        projectsLength,
+        commitsLength,
+        completedTasksLength
+    });
+});
+exports.getMyMonthlyActivity = getMyMonthlyActivity;
+const getTimelineActivity = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { allEvents } = req;
+    try {
+        res.json(allEvents);
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal server error'
+        });
+    }
+});
+exports.getTimelineActivity = getTimelineActivity;
+const getProjectTimelineActivity = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { allEvents } = req;
+    try {
+        res.json(allEvents);
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal server error'
+        });
+    }
+});
+exports.getProjectTimelineActivity = getProjectTimelineActivity;
 //# sourceMappingURL=users.js.map

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import Collaborator from '../models/collaboratorSchema';
 import Layer from '../models/layerSchema';
 import Repo from '../models/repoSchema';
-
+import Noti from '../models/notisSchema';
 
 
 // ! Middlewares Helpers
@@ -186,6 +186,7 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
 
     const { layerID, projectID } = req.params
     const { newCollaborators } = req.body
+    const { layer, project } = req
 
     if( newCollaborators.length === 0 ) {
         req.creatingMiddlewareState = false;
@@ -204,6 +205,16 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
             if (existingCollaborator) {
                 if (!existingCollaborator.state) {
                     await Collaborator.updateOne({ _id: existingCollaborator._id, 'layer._id': layerID, projectID }, { $set: { state: true, name: name, photoUrl: photoUrl, 'layer.accessLevel': accessLevel } });
+                    
+                    const noti = new Noti({
+                        type: 'added-to-layer',
+                        title: 'You have been added to a Layer',
+                        recipient: id,
+                        from: { name: 'System', ID: projectID },
+                        additionalData: { layerId: layerID, layerName: layer.name, projectName: project.name, accessLevel }
+                    });
+                    await noti.save();
+
                     totalCreated++;
                 }
                 // Si el colaborador existe y ya está activo, no aumentar totalCreated.
@@ -212,6 +223,16 @@ export const newCollaborators = async(req: Request, res: Response, next: NextFun
                 console.log('new collaborator')
                 const c = new Collaborator({ uid: id, name, photoUrl, projectID, layer: { _id: layerID, accessLevel }, state: true });
                 await c.save();
+
+                const noti = new Noti({
+                    type: 'added-to-layer',
+                    title: 'You have been added to a Layer',
+                    recipient: id,
+                    from: { name: 'System', ID: projectID },
+                    additionalData: { layerId: layerID, layerName: layer.name, projectName: project.name, accessLevel }
+                });
+                await noti.save();
+
                 totalCreated++;
             }
         };
@@ -468,10 +489,12 @@ export const updateOtherCDataOfDeletedLayerCollaborators = async(req: Request, r
 };
 
 
+
 // ! Collaborator Propper Data Return based on access level
 export const getProjectLayersDataBaseOnAccess = async(req: Request, res: Response, next: NextFunction) => {
+        
+    const uid = req.query.uid;    
     const { projectID } = req.params;
-    const uid = req.user._id;
     const { owner, levels, type } = req;
 
     if (owner && owner === true) {
@@ -521,5 +544,53 @@ export const getProjectLayersDataBaseOnAccess = async(req: Request, res: Respons
             message: 'Internal Server error',
             error
         });
+    }
+}
+
+
+
+
+
+export const getCreatedLayersDates = async(req: Request, res: Response, next: NextFunction) => {
+
+    const { uid } = req.params;
+    const { startDate, endDate } = req.query
+
+    try {
+        const layers = await Layer.find({ creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+                                  .select('creator createdAt name _id project')
+                                  .populate('project', 'name _id')
+                                  .lean();
+
+        req.createdLayers = layers;
+        next();
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });      
+    }
+}
+
+export const getProjectCreatedLayersDates = async(req: Request, res: Response, next: NextFunction) => {
+
+    const { projectId } = req.params;
+    const { startDate, endDate, uid } = req.query
+
+    try {
+        const layers = await Layer.find({ project: projectId, creator: uid, createdAt: { $gte: startDate, $lte: endDate } })
+                                  .select('creator createdAt name _id project')
+                                  .populate('project', 'name _id')
+                                  .lean();
+
+        req.createdLayers = layers;
+        next();
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });      
     }
 }

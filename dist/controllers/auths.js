@@ -89,7 +89,11 @@ exports.usersPostRegistration = usersPostRegistration;
 const googlePostLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { email } = req.body;
     try {
-        const user = yield userSchema_1.default.findOne({ email });
+        const user = yield userSchema_1.default.findOne({ email })
+            .populate({
+            path: 'topProjects',
+            select: '_id name'
+        });
         // ! verificar si el email existe
         if (!user)
             return res.status(400).json({

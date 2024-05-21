@@ -21,17 +21,41 @@ const postNoti = async(req: Request, res: Response) => {
 
 const getNotisbyUserId = async(req: Request, res: Response) => {
 
-    const userid = req.params.id
+    const { uid } = req.params
+    const { limit = 10, from = 0, type } = req.query
+
+    const general = ['project-invitation', 'friend-request', 'new-follower', 'prj-updates', 'prj-patches', 'prj-announcements']
+    
+    const activity = ['new-commit', 
+                         'new-task-commit', 'task-assignation', 'task-rejected', 'task-approved', 'task-invitation',  'added-to-repo', 'added-to-layer' ]
 
     try {
+        if( type === 'general' ) {
+            const notis = await Noti.find({ 
+                type: { $in: general },
+                recipient: uid, 
+                status: true })
+                .sort({ createdAt: -1 })
+                .skip( Number( from ) )
+                .limit( Number( limit ) )
 
-        const notis = await Noti.find({ recipient: userid, status: true })
+            return res.json({
+                notis
+            });
 
-        return res.json({
-            notis
-        });
+        } else {
+            const notis = await Noti.find({ 
+                type: { $in: activity },
+                recipient: uid, 
+                status: true })
+                .sort({ createdAt: -1 })
+                .skip( Number( from ) )
+                .limit( Number( limit ) )
 
-        
+            return res.json({
+                notis
+            });
+        }       
     } catch (error) {
         console.log(error.message)
         return res.status(400).json({

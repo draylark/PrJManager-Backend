@@ -10,67 +10,50 @@ import { updateLayerCollaborators, validateLayerExistance, validateCollaboratorA
 
 const router = Router();
 
-
-router.get('/get-layer/:layerID', 
-    layerController.getLayersById 
-);
-
-
 router.post('/create-layer/:projectID', [
     validateJWT,
     validateProjectExistance,
     validateCollaboratorAccessOnProject(['administrator', 'manager']),
-    verifyProjectLayers
+    verifyProjectLayers ], layerController.createLayer);
 
-], layerController.createLayer );
+router.get('/get-layer/:layerID', [
+    // validateJWT
+], layerController.getLayersById);
 
-router.get('/get-layers/:projectID', 
-    [
-        validateJWT,
-        validateProjectExistance,
-        validateUserAccessOnProject,
-        getProjectLayersDataBaseOnAccess
-    ], 
-    layerController.getLayersByProjectId 
-);
 
-router.put('/update-layer/:projectID/:layerID', 
-     [
-            validateJWT,
-            validateProjectExistance,
-            validateLayerExistance,
-            validateCollaboratorAccessOnLayer(['administrator']),
-     ],
-     layerController.updateLayer );
 
+
+
+router.get('/get-layers/:projectID', [
+    validateProjectExistance,
+    validateUserAccessOnProject,
+    getProjectLayersDataBaseOnAccess ], layerController.getLayersByProjectId);
+
+
+router.get('/get-layer-collaborators/:layerID', layerController.getLayerCollaborators);
+
+
+router.put('/update-layer/:projectID/:layerID', [
+    validateJWT,
+    validateProjectExistance,
+    validateLayerExistance,
+    validateCollaboratorAccessOnLayer(['administrator']) ], layerController.updateLayer );
+
+
+router.put('/collaborators/:projectID/:layerID', [
+    validateJWT,
+    validateProjectExistance,
+    validateLayerExistance,
+    validateCollaboratorAccessOnLayer(['administrator']),
+    deleteCollaborators,
+    updateOtherCDataOfDeletedLayerCollaborators,
+    updateLayerCollaborators,
+    updateOtherCDataOfLayerModifiedCollaborators,
+    verifyProjectLevelAccessOfNewCollaborator,
+    newCollaborators,
+    createOtherCDataOfLayerCreatedCollaborators], layerController.response );
+    
 router.delete('/delete-layer/:layerID', layerController.deleteLayer );
-
-router.post('/add-layer-collaborator/:layerID', layerController.addLayerCollaborator );
-
-router.put('/collaborators/:projectID/:layerID', 
-    [
-        validateJWT,
-        validateProjectExistance,
-        validateLayerExistance,
-        validateCollaboratorAccessOnLayer(['administrator']),
-        deleteCollaborators,
-        updateOtherCDataOfDeletedLayerCollaborators,
-        updateLayerCollaborators,
-        updateOtherCDataOfLayerModifiedCollaborators,
-        verifyProjectLevelAccessOfNewCollaborator,
-        newCollaborators,
-        createOtherCDataOfLayerCreatedCollaborators
-    ], 
-    layerController.response 
-);
-
-router.get('/get-layer-collaborators/:layerID', 
-    [ 
-        validateJWT 
-    ], 
-    layerController.getLayerCollaborators 
-);
-
 
 
 export default router;

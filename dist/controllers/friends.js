@@ -12,9 +12,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteFriend = exports.manageFriendsRequests = exports.addFriend = exports.getFriend = exports.getFriends = void 0;
+exports.deleteFriend = exports.handleFriendRequest = exports.newFriendRequest = exports.getFriend = exports.getFriends = void 0;
 const friendSchema_1 = __importDefault(require("../models/friendSchema"));
 const notisSchema_1 = __importDefault(require("../models/notisSchema"));
+const friendshipSchema_1 = __importDefault(require("../models/friendshipSchema"));
 const getFriends = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { uid } = req.params;
     try {
@@ -41,80 +42,74 @@ exports.getFriends = getFriends;
 const getFriend = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.getFriend = getFriend;
-const addFriend = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const newFriendRequest = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { requestedUID } = req.params;
     const { uid, username, photoUrl } = req.body;
     try {
-        const f = new friendSchema_1.default({
-            friends_reference: [requestedUID, uid],
+        const friendship = new friendshipSchema_1.default({
             requester: uid,
             recipient: requestedUID,
+            status: 'pending'
         });
-        f.save();
+        yield friendship.save();
         const noti = new notisSchema_1.default({
             type: 'friend-request',
             title: 'Friend request',
             description: `You have a new friend request`,
+            recipient: requestedUID,
             from: {
                 ID: uid,
                 name: username,
                 photoUrl: photoUrl || null
             },
-            recipient: requestedUID,
-            state: false
+            additionalData: {
+                ref: friendship._id
+            },
         });
-        noti.save();
+        yield noti.save();
         return res.json({
-            msg: 'Friend request sent',
-            noti,
-            f
+            message: 'Friend request sent',
+            success: true
         });
     }
     catch (error) {
         return res.status(500).json({
-            msg: 'Server error',
+            success: false,
+            message: 'Server error',
             error: error.message
         });
     }
 });
-exports.addFriend = addFriend;
-const manageFriendsRequests = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { requestStatus, uid, notiID } = req.body;
+exports.newFriendRequest = newFriendRequest;
+const handleFriendRequest = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { requestStatus, uid, notiID, ref } = req.body;
     const { requesterID } = req.params;
-    if (requestStatus === 'accept') {
-        try {
-            const f = yield friendSchema_1.default.findOneAndUpdate({ requester: requesterID, recipient: uid }, { friendship_status: 'accepted', state: true }, { new: true });
-            const noti = yield notisSchema_1.default.findByIdAndUpdate(notiID, { status: false }, { new: true });
+    try {
+        if (requestStatus === 'accept') {
+            yield friendshipSchema_1.default.findOneAndUpdate({ _id: ref, requester: requesterID, recipient: uid, status: 'pending' }, { status: 'accepted' });
+            yield notisSchema_1.default.findByIdAndUpdate(notiID, { status: false });
             return res.json({
-                msg: `Friend request accepted`,
-                new_friend: f,
-                notiTodelete: noti === null || noti === void 0 ? void 0 : noti._id
+                accepted: true,
+                message: `Friend request accepted.`,
             });
         }
-        catch (error) {
-            return res.status(500).json({
-                msg: 'Server error',
-                error: error.message
+        else {
+            yield friendshipSchema_1.default.findOneAndUpdate({ _id: ref, requester: requesterID, recipient: uid, status: 'pending' }, { status: 'rejected' });
+            yield notisSchema_1.default.findByIdAndUpdate(notiID, { status: false });
+            res.json({
+                accepted: false,
+                message: `Friend request rejected.`,
             });
         }
     }
-    else {
-        try {
-            const f = yield friendSchema_1.default.findOneAndRemove({ requester: requesterID, recipient: uid });
-            const noti = yield notisSchema_1.default.findByIdAndUpdate(notiID, { status: false }, { new: true });
-            res.json({
-                msg: `Friend request rejected`,
-                notiTodelete: noti === null || noti === void 0 ? void 0 : noti._id
-            });
-        }
-        catch (error) {
-            return res.status(400).json({
-                msg: 'Bad request'
-            });
-        }
+    catch (error) {
+        return res.status(500).json({
+            message: 'Internal Server Error',
+            error: error.message
+        });
     }
 });
-exports.manageFriendsRequests = manageFriendsRequests;
+exports.handleFriendRequest = handleFriendRequest;
 const deleteFriend = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.deleteFriend = deleteFriend;

@@ -10,7 +10,7 @@ const validar_jwt_1 = __importDefault(require("../middlewares/validar-jwt"));
 const validar_roles_1 = require("../middlewares/validar-roles");
 const dvValidators_1 = require("../helpers/dvValidators");
 const router = (0, express_1.Router)();
-router.get('/:id', notis_1.getNotisbyUserId);
+router.get('/:uid', notis_1.getNotisbyUserId);
 router.post('/', notis_1.postNoti);
 router.put('/:id', [
     (0, express_validator_1.check)('id', 'No es un ID valido').isMongoId(),
