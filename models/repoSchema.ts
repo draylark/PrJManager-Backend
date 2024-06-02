@@ -47,6 +47,10 @@ const repoSchema = new Schema({
     type: Number,
     required: true,
   },
+  commits: {
+    type: Number,
+    required: true,
+  },
   creator: {
     type: Schema.Types.ObjectId,
     ref: 'User',

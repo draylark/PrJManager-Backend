@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProjectTasksDates = exports.getTasksDates = exports.updateParticipation = exports.getCompletedTasksLength = exports.validateCollaboratorAccess = exports.getProjectTasksBaseOnAccess = exports.getProjectTasksBaseOnAccessForHeatMap = exports.getTaskData = exports.validateUserAccessForTaskData = exports.getTaskContributors = void 0;
+exports.getProfileTasksFiltered = exports.getProjectTasksDates = exports.getTasksDates = exports.updateParticipation = exports.getCompletedTasksLength = exports.validateCollaboratorAccess = exports.getProjectTasksBaseOnAccess = exports.getProjectTasksBaseOnAccessForHeatMap = exports.getTaskData = exports.validateUserAccessForTaskData = exports.getTaskContributors = void 0;
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
 const noteSchema_1 = __importDefault(require("../models/noteSchema"));
@@ -658,4 +658,46 @@ const getProjectTasksDates = (req, res, next) => __awaiter(void 0, void 0, void 
     }
 });
 exports.getProjectTasksDates = getProjectTasksDates;
+const getProfileTasksFiltered = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    const { year } = req.query;
+    let matchCondition = { assigned_to: uid };
+    if (year) {
+        matchCondition = Object.assign(Object.assign({}, matchCondition), { completed_at: {
+                $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+            } });
+    }
+    try {
+        const tasks = yield taskSchema_1.default.find(matchCondition)
+            .sort({ updatedAt: -1 })
+            .select('createdAt task_name assigned_to _id project layer_related_id repository_related_id')
+            .populate('repository_related_id', 'visibility name')
+            .populate('layer_related_id', 'visibility name')
+            .populate('project', 'visibility name');
+        const filteredTasks = tasks.reduce((acc, task) => {
+            const { project, layer_related_id, repository_related_id } = task;
+            if (validateVisibility(project.visibility, layer_related_id.visibility, repository_related_id.visibility)) {
+                acc.push(task);
+            }
+            return acc;
+        }, []);
+        req.tasks = filteredTasks;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getProfileTasksFiltered = getProfileTasksFiltered;
+const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
+    if (pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open') {
+        return true;
+    }
+    return false;
+};
 //# sourceMappingURL=tasks-middlewares.js.map

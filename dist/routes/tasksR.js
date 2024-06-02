@@ -53,6 +53,7 @@ router.get('/activity-data/:projectID', [
     project_middlewares_1.validateUserAccessOnProject,
     tasks_middlewares_1.getProjectTasksBaseOnAccess
 ], tasksController.getTasksByProject);
+router.get('/get-profile-tasks/:uid', [tasks_middlewares_1.getProfileTasksFiltered], tasksController.getProfileTasks);
 router.get('/get-user-tasks/:uid', [validateJWT_1.validateJWT], tasksController.getUserTasks);
 router.get('/top-projects-tasks/:uid', [validateJWT_1.validateJWT], tasksController.getTopProjectsTasks);
 router.get('/get-tasks-for-dashboard/:uid', [validateJWT_1.validateJWT], tasksController.getTasksForDashboard);

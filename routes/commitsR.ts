@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { validateJWT } from '../middlewares/validateJWT';
 import * as commitsController from '../controllers/commits';
 import { validateRepositoryExistance } from '../middlewares/DB-validators';
-import { findCommit, getProjectCommitsBaseOnAccess } from '../middlewares/commits-middlewares';
+import { findCommit, getProjectCommitsBaseOnAccess, getProfileCommitsFiltered } from '../middlewares/commits-middlewares';
 import { validateUserAccessOnProject, validateProjectExistance } from '../middlewares/project-middlewares';
 
 
 const router = Router()
+
 
 
 router.get('/:repoID', commitsController.getCommitsByRepo);
@@ -19,7 +20,10 @@ router.get('/activity/:projectID', commitsController.getProyectCommits);
 
 router.get('/repo-activity/:repoID', commitsController.getRepoCommits);
 
+router.get('/get-profile-commits/:uid', [getProfileCommitsFiltered], commitsController.getProfileCommits);
+
 router.get('/get-commits-for-dashboard/:uid', commitsController.getCommitsForDashboard);
+
 
 router.get('/activity-data/:projectID', [
     validateJWT,

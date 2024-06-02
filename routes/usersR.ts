@@ -15,23 +15,29 @@ import { validateJWT } from '../middlewares/validateJWT';
 const router = Router()
 
 
+
 router.post('/', uController.getUsers);
 
 router.get('/find-user', uController.findUsers)
+
+router.get('/get-users-relation', uController.getUsersRelation);
 
 router.get('/:id', [
     check('id', 'No es un ID valido').isMongoId(),
     check('id').custom( isIdExist )
 ], uController.getUsersById);
 
+router.get('/get-profile/:uid', uController.getProfile);
+
+
+
+ // ? User Activity
 
 router.get('/my-monthly-activity/:uid', [
     getProjectsLength,
     getCommitsLength,
     getCompletedTasksLength
 ], uController.getMyMonthlyActivity);
-
-
 
 router.get('/timeline-activity/:uid', [
     // validateJWT,
@@ -52,14 +58,26 @@ router.get('/project-timeline-activity/:projectId', [
 ], uController.getProjectTimelineActivity);
 
 
-router.put('/update-my-links/:uid', uController.updateMyLinks);
 
-router.put('/:id', [
-    check('id', 'No es un ID valido').isMongoId(),
-    check('id').custom( isIdExist )
-], uController.putUsers);
+router.get('/get-followers-length/:uid', uController.getFollowersLength);
 
 router.put('/update-top-projects/:uid', [validateJWT], uController.updateUserTopProjects);
+
+
+
+ // ? User Friends
+
+router.get('/get-profile-followers-following/:profileUID', uController.getProfileFollowersFollowing);
+
+router.get('/get-fll-flly-friends/:uid', uController.getFollowersAndFollowingFriends);
+router.get('/get-fll/:profileUID', uController.getFollowers);
+router.get('/get-flly/:profileUID', uController.getFollowing);
+router.get('/get-friends/:uid', uController.getFriends);
+
+router.post('/follow-profile', uController.followProfile);
+
+router.delete('/unfollow-profile/:profileUID',  uController.unfollowProfile);
+
 
 router.delete('/:id', [
     validarJWT,
@@ -67,6 +85,22 @@ router.delete('/:id', [
     check('id').custom( isIdExist ),
     showRole('ADMIN_ROLE', 'VENTAS_ROLE'),
 ], uController.deleteUsers);
+
+router.put('/update-my-links/:uid', uController.updateMyLinks);
+
+router.put('/:id', [
+    check('id', 'No es un ID valido').isMongoId(),
+    check('id').custom( isIdExist )
+], uController.putUsers);
+
+
+
+
+
+
+
+
+
 
 
 

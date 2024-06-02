@@ -780,12 +780,6 @@ export const handleTaskInvitation = async(req: Request, res: Response) => {
     const { taskId} = req.params
     const { uid, accepted, notiId } = req.body
 
-    console.log('accepted', accepted)
-    console.log('notiId', notiId)
-    console.log('taskId', taskId)
-
-    console.log('uid', uid)
-
     try {
         if(accepted){
             await Task.findOneAndUpdate({ _id: taskId }, { $addToSet: { contributorsIds: uid } })
@@ -808,3 +802,21 @@ export const handleTaskInvitation = async(req: Request, res: Response) => {
         })
     }
 }
+
+
+
+export const getProfileTasks = async(req: Request, res: Response) => {
+    const { tasks } = req
+
+    try {
+        res.json({
+            tasks
+        });
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        })
+    }
+};

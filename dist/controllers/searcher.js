@@ -28,7 +28,8 @@ const searcher = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 case 'profiles':
                     const users = yield userSchema_1.default.find({ username: { $regex: searchTerm, $options: 'i' } })
                         .skip(from)
-                        .limit(limit);
+                        .limit(limit)
+                        .select('username _id photoUrl projects');
                     return res.json({ results: users });
                 case 'projects':
                     const projects = yield projectSchema_1.default.find({ name: { $regex: searchTerm, $options: 'i' }, visibility: 'public' })

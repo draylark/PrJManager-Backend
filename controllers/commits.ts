@@ -1,5 +1,5 @@
 import Commit from "../models/commitSchema";
-import { Request, Response } from "express";
+import e, { Request, Response } from "express";
 
 
 export const getCommitsByRepo = async (req: Request, res: Response) => {
@@ -152,8 +152,6 @@ export const getCommitsForDashboard = async (req: Request, res: Response) => {
 
   const { startDate, endDate, uid } = req.query;
 
-  console.log(startDate, endDate, uid)
-
   try {
 
       let matchConditions = { 'author.uid': uid };
@@ -164,8 +162,6 @@ export const getCommitsForDashboard = async (req: Request, res: Response) => {
             $lte: new Date(endDate)
         }
     }
-
-    console.log(matchConditions)
 
       const commits = await Commit.find(matchConditions)  
               .select('_id message createdAt')
@@ -182,4 +178,20 @@ export const getCommitsForDashboard = async (req: Request, res: Response) => {
       });
   }
 
+}
+
+
+
+export const getProfileCommits = async (req: Request, res: Response) => {
+  const { commits } = req;
+
+  try {
+      return res.json({
+          commits
+      });
+  } catch (error) {
+      res.status(500).json({
+          message: 'Internal Server Error'
+      });
+  }
 }

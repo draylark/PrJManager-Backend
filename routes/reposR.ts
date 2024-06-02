@@ -32,7 +32,7 @@ router.get('/get-repos/:projectID',  [
     validateProjectExistance,
     validateUserAccessOnProject,
     getProjectReposDataBaseOnAccess ], repoController.getReposByProject );
-
+router.get('/get-top-profile-repos/:uid',  repoController.getTopUserRepos)
 
 router.put('/update-repository/:projectID/:layerID/:repoID',  [
     validateJWT,

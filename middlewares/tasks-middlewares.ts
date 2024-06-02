@@ -808,4 +808,62 @@ export const getProjectTasksDates = async(req: Request, res: Response, next: Nex
         error,
       });
     }
-  };
+};
+
+
+export const getProfileTasksFiltered = async( req: Request, res: Response, next: NextFunction ) => {
+
+    const { uid } = req.params;
+    const { year } = req.query;
+
+
+    
+    let matchCondition = { assigned_to: uid };
+        if (year) {
+            matchCondition = { 
+            ...matchCondition,
+            completed_at: {
+                $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+            }
+            };
+        }
+
+
+    try {
+        const tasks = await Task.find( matchCondition )
+        .sort({ updatedAt: -1 })
+        .select('createdAt task_name assigned_to _id project layer_related_id repository_related_id')
+        .populate('repository_related_id', 'visibility name')
+        .populate('layer_related_id', 'visibility name')
+        .populate('project', 'visibility name')
+
+
+        const filteredTasks = tasks.reduce((acc, task) => {
+            const { project, layer_related_id, repository_related_id } = task;
+
+            if (validateVisibility(project.visibility, layer_related_id.visibility, repository_related_id.visibility)) {
+                acc.push(task);
+            }
+            return acc;
+        }, []);
+
+        req.tasks = filteredTasks;
+        next();
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+};
+
+
+const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
+    if( pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open' ) {
+        return true;
+    }
+    return false;
+}

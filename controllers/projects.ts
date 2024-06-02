@@ -357,3 +357,53 @@ export const getMyProjectTimelineActivity = async( req: Request, res: Response )
     const { uid } = req.query
 
 }
+
+export const getProfileTopProjects = async(req: Request, res: Response) => {
+    const { uid } = req.params;
+
+    try {
+        // Obtén todos los proyectos del usuario
+        const projects = await Project.find({ owner: uid, visibility: 'public' })
+                                .select('name commits _id description updatedAt')
+
+        // Ordena los proyectos por la cantidad de commits en orden descendente
+        const sortedProjects = projects.sort((a, b) => b.commits - a.commits);
+
+        // Selecciona los primeros tres proyectos
+        const topProjects = sortedProjects.slice(0, 3);
+
+        res.json({
+            success: true,
+            topProjects: topProjects
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server error',
+            error
+        });
+    }
+};
+
+
+export const getProfilePublicProjects = async(req: Request, res: Response) => {
+    const { uid } = req.params
+
+    try {
+        const projects = await Project.find({ owner: uid, visibility: 'public' })
+                                .select('name commits layers repositories completedTasks _id description updatedAt')
+
+        res.json({
+            success: true,
+            projects
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server error',
+            error
+        });
+    }
+}

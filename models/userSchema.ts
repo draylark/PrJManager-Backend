@@ -12,6 +12,10 @@ const UserSchema = new Schema({
         require: [true, 'Email is required'],
         unique: true
     },
+    description: {
+        type: String,
+        default: null
+    },
     password: {
         type: String,
         require: [true, 'Password is required']
@@ -44,6 +48,18 @@ const UserSchema = new Schema({
         type: Number,
         default: 0
     },
+    followers: {
+        type: Number,
+        default: 0
+    },
+    following: {
+        type: Number,
+        default: 0
+    },
+    friends: {
+        type: Number,
+        default: 0
+    },
     topProjects: {
         type: [Schema.Types.ObjectId],
         ref: 'Project',
@@ -57,7 +73,7 @@ const UserSchema = new Schema({
         type: String,
         default: null
     }
-})
+}, { timestamps: true })
 
 UserSchema.methods.toJSON = function(){
     const { __v, password, _id, ...user } = this.toObject();

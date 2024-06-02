@@ -53,6 +53,7 @@ router.get('/get-repos/:projectID', [
     project_middlewares_1.validateUserAccessOnProject,
     repository_middlewares_1.getProjectReposDataBaseOnAccess
 ], repoController.getReposByProject);
+router.get('/get-top-profile-repos/:uid', repoController.getTopUserRepos);
 router.put('/update-repository/:projectID/:layerID/:repoID', [
     validateJWT_1.validateJWT,
     project_middlewares_1.validateProjectExistance,

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleAndOrganizeProjectData = exports.handleAndOrganizeData = void 0;
+exports.validateVisibility = exports.handleAndOrganizeProjectData = exports.handleAndOrganizeData = void 0;
 const handleAndOrganizeData = (req, res, next) => {
     const { createdProjects, createdLayers, createdRepos, commits, tasks } = req;
     let allEvents = [];
@@ -193,4 +193,11 @@ const handleAndOrganizeProjectData = (req, res, next) => {
     }
 };
 exports.handleAndOrganizeProjectData = handleAndOrganizeProjectData;
+const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
+    if (pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open') {
+        return true;
+    }
+    return false;
+};
+exports.validateVisibility = validateVisibility;
 //# sourceMappingURL=helpers-middlewares.js.map

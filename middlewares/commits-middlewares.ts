@@ -316,7 +316,7 @@ export const getCommitsLength = async(req: Request, res: Response, next: NextFun
     }
 
 
-}
+};
 
 export const getCommitsDates = async(req: Request, res: Response, next: NextFunction) => {
     const { uid } = req.params;
@@ -344,7 +344,7 @@ export const getCommitsDates = async(req: Request, res: Response, next: NextFunc
             message: 'Internal Server error'
         })
     }
-}
+};
 
 export const getProjectCommitsDates = async(req: Request, res: Response, next: NextFunction) => {
     const { projectId } = req.params;
@@ -372,4 +372,59 @@ export const getProjectCommitsDates = async(req: Request, res: Response, next: N
             message: 'Internal Server error'
         })
     }
+};
+
+
+export const getProfileCommitsFiltered = async(req: Request, res: Response, next: NextFunction) => {
+
+    const { uid } = req.params;
+    const {  year } = req.query;
+
+    let matchCondition = { 'author.uid': uid } ;
+    if (year) {
+        matchCondition = { 
+        ...matchCondition,
+        createdAt: {
+            $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+            $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+        }
+        };
+    }
+
+    try {
+        const commits = await Commit.find(matchCondition)
+                                    .select('createdAt uuid author _id repository layer project')
+                                    .populate('repository', 'visibility name')
+                                    .populate('layer', 'visibility name')
+                                    .populate('project', 'visibility name')
+                                    .populate('associated_task', 'task_name')
+                                    .sort({ createdAt: -1 })
+                                    .lean()
+
+
+        const filteredCommits = commits.reduce((acc, commit) => {
+            const { layer, repository, project } = commit;
+            if (validateVisibility(project.visibility, layer.visibility, repository.visibility)) {
+                acc.push(commit);
+            }
+            return acc;
+        }, []);
+
+        req.commits = filteredCommits;
+        next();
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    };
+};
+
+
+
+export const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
+    if( pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open' ) {
+        return true;
+    }
+    return false;
 }

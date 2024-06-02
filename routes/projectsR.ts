@@ -25,6 +25,9 @@ router.get('/get-project-by-id/:projectID', [
 
 router.get('/get-projects/:uid', prjController.getProjects);
 
+router.get('/get-profile-public-projects/:uid', prjController.getProfilePublicProjects);
+router.get('/get-profile-top-projects/:uid', prjController.getProfileTopProjects);
+
 router.get('/collaborators/:projectID', prjController.getCollaborators)
 
 router.get('/readme/:readmeID', prjController.getReadme)

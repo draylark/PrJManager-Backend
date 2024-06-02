@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCommitsForDashboard = exports.getRepoCommits = exports.getProyectCommits = exports.getCommitDiff = exports.getCommitsByRepo = void 0;
+exports.getProfileCommits = exports.getCommitsForDashboard = exports.getRepoCommits = exports.getProyectCommits = exports.getCommitDiff = exports.getCommitsByRepo = void 0;
 const commitSchema_1 = __importDefault(require("../models/commitSchema"));
 const getCommitsByRepo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
@@ -134,7 +134,6 @@ const getRepoCommits = (req, res) => __awaiter(void 0, void 0, void 0, function*
 exports.getRepoCommits = getRepoCommits;
 const getCommitsForDashboard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { startDate, endDate, uid } = req.query;
-    console.log(startDate, endDate, uid);
     try {
         let matchConditions = { 'author.uid': uid };
         if (startDate && endDate) {
@@ -143,7 +142,6 @@ const getCommitsForDashboard = (req, res) => __awaiter(void 0, void 0, void 0, f
                 $lte: new Date(endDate)
             };
         }
-        console.log(matchConditions);
         const commits = yield commitSchema_1.default.find(matchConditions)
             .select('_id message createdAt')
             .sort({ createdAt: -1 });
@@ -159,4 +157,18 @@ const getCommitsForDashboard = (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 });
 exports.getCommitsForDashboard = getCommitsForDashboard;
+const getProfileCommits = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { commits } = req;
+    try {
+        return res.json({
+            commits
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
+});
+exports.getProfileCommits = getProfileCommits;
 //# sourceMappingURL=commits.js.map

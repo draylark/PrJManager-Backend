@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMyProjectTimelineActivity = exports.handlePrJCollaboratorInvitation = exports.getProjectActivityData = exports.prjInvitationCallback = exports.response = exports.getReadme = exports.getCollaborators = exports.deleteProject = exports.updateProject = exports.getProjectById = exports.getProject = exports.postProject = exports.getProjects = void 0;
+exports.getProfilePublicProjects = exports.getProfileTopProjects = exports.getMyProjectTimelineActivity = exports.handlePrJCollaboratorInvitation = exports.getProjectActivityData = exports.prjInvitationCallback = exports.response = exports.getReadme = exports.getCollaborators = exports.deleteProject = exports.updateProject = exports.getProjectById = exports.getProject = exports.postProject = exports.getProjects = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
@@ -307,4 +307,47 @@ const getMyProjectTimelineActivity = (req, res) => __awaiter(void 0, void 0, voi
     const { uid } = req.query;
 });
 exports.getMyProjectTimelineActivity = getMyProjectTimelineActivity;
+const getProfileTopProjects = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    try {
+        // Obtén todos los proyectos del usuario
+        const projects = yield projectSchema_1.default.find({ owner: uid, visibility: 'public' })
+            .select('name commits _id description updatedAt');
+        // Ordena los proyectos por la cantidad de commits en orden descendente
+        const sortedProjects = projects.sort((a, b) => b.commits - a.commits);
+        // Selecciona los primeros tres proyectos
+        const topProjects = sortedProjects.slice(0, 3);
+        res.json({
+            success: true,
+            topProjects: topProjects
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getProfileTopProjects = getProfileTopProjects;
+const getProfilePublicProjects = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    try {
+        const projects = yield projectSchema_1.default.find({ owner: uid, visibility: 'public' })
+            .select('name commits layers repositories completedTasks _id description updatedAt');
+        res.json({
+            success: true,
+            projects
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getProfilePublicProjects = getProfilePublicProjects;
 //# sourceMappingURL=projects.js.map

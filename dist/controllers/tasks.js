@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleTaskInvitation = exports.deleteTaskContributor = exports.updateTaskContributors = exports.getTaskContributors = exports.deleteNote = exports.updateNote = exports.getTaskNotes = exports.getTasksForDashboard = exports.getTopProjectsTasks = exports.getUserTasks = exports.sendTaskToRevision = exports.updateTaskStatus = exports.getTasksByProject = exports.getRepoTasksDataForHeatMap = exports.getProyectTasksDataForHeatMap = exports.getTasksByRepo = exports.completeTask = exports.deleteTask = exports.putTask = exports.getTasks = exports.getTaskCommits = exports.getTaskById = exports.createNewTask = void 0;
+exports.getProfileTasks = exports.handleTaskInvitation = exports.deleteTaskContributor = exports.updateTaskContributors = exports.getTaskContributors = exports.deleteNote = exports.updateNote = exports.getTaskNotes = exports.getTasksForDashboard = exports.getTopProjectsTasks = exports.getUserTasks = exports.sendTaskToRevision = exports.updateTaskStatus = exports.getTasksByProject = exports.getRepoTasksDataForHeatMap = exports.getProyectTasksDataForHeatMap = exports.getTasksByRepo = exports.completeTask = exports.deleteTask = exports.putTask = exports.getTasks = exports.getTaskCommits = exports.getTaskById = exports.createNewTask = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
 const notisSchema_1 = __importDefault(require("../models/notisSchema"));
@@ -639,10 +639,6 @@ exports.deleteTaskContributor = deleteTaskContributor;
 const handleTaskInvitation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { taskId } = req.params;
     const { uid, accepted, notiId } = req.body;
-    console.log('accepted', accepted);
-    console.log('notiId', notiId);
-    console.log('taskId', taskId);
-    console.log('uid', uid);
     try {
         if (accepted) {
             yield taskSchema_1.default.findOneAndUpdate({ _id: taskId }, { $addToSet: { contributorsIds: uid } });
@@ -667,4 +663,20 @@ const handleTaskInvitation = (req, res) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.handleTaskInvitation = handleTaskInvitation;
+const getProfileTasks = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { tasks } = req;
+    try {
+        res.json({
+            tasks
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(400).json({
+            message: 'Internal Server error',
+            error
+        });
+    }
+});
+exports.getProfileTasks = getProfileTasks;
 //# sourceMappingURL=tasks.js.map

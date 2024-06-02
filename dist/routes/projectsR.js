@@ -46,6 +46,8 @@ router.get('/get-project-by-id/:projectID', [
     project_middlewares_1.validateUserAccessBaseOnProjectVisibility
 ], prjController.getProjectById);
 router.get('/get-projects/:uid', prjController.getProjects);
+router.get('/get-profile-public-projects/:uid', prjController.getProfilePublicProjects);
+router.get('/get-profile-top-projects/:uid', prjController.getProfileTopProjects);
 router.get('/collaborators/:projectID', prjController.getCollaborators);
 router.get('/readme/:readmeID', prjController.getReadme);
 router.get('/timeline-activity/:projectId', prjController.getMyProjectTimelineActivity);

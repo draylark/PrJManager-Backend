@@ -6,7 +6,7 @@ import { validateJWT } from '../middlewares/validateJWT';
 import { validateUserAccessOnProject } from '../middlewares/project-middlewares';
 import { validateProjectExistance } from '../middlewares/project-middlewares';
 import { getCommits, getContributorsCommits } from '../middlewares/commits-middlewares';
-import { getProjectTasksBaseOnAccess, getProjectTasksBaseOnAccessForHeatMap, validateCollaboratorAccess, getTaskData, updateParticipation, getTaskContributors } from '../middlewares/tasks-middlewares';
+import { getProjectTasksBaseOnAccess, getProjectTasksBaseOnAccessForHeatMap, validateCollaboratorAccess, getTaskData, updateParticipation, getTaskContributors, getProfileTasksFiltered } from '../middlewares/tasks-middlewares';
 import { validateRepositoryExistance as getRepo } from '../middlewares/repository-middlewares';
 
 
@@ -39,6 +39,8 @@ router.get('/activity-data/:projectID', [
     validateProjectExistance, 
     validateUserAccessOnProject, 
     getProjectTasksBaseOnAccess ], tasksController.getTasksByProject);
+
+router.get('/get-profile-tasks/:uid', [getProfileTasksFiltered], tasksController.getProfileTasks);
 
 router.get('/get-user-tasks/:uid', [ validateJWT ], tasksController.getUserTasks);
 

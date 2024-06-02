@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProjectCommitsDates = exports.getCommitsDates = exports.getCommitsLength = exports.getProjectCommitsBaseOnAccess = exports.findCommit = exports.getCommits = exports.getCommitsHashes = exports.getContributorsCommits = void 0;
+exports.validateVisibility = exports.getProfileCommitsFiltered = exports.getProjectCommitsDates = exports.getCommitsDates = exports.getCommitsLength = exports.getProjectCommitsBaseOnAccess = exports.findCommit = exports.getCommits = exports.getCommitsHashes = exports.getContributorsCommits = void 0;
 const commitSchema_1 = __importDefault(require("../models/commitSchema"));
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const evalAccess = (cOnLayer, cOnRepo, lVisibility, RVisibility) => {
@@ -326,4 +326,49 @@ const getProjectCommitsDates = (req, res, next) => __awaiter(void 0, void 0, voi
     }
 });
 exports.getProjectCommitsDates = getProjectCommitsDates;
+const getProfileCommitsFiltered = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    const { year } = req.query;
+    let matchCondition = { 'author.uid': uid };
+    if (year) {
+        matchCondition = Object.assign(Object.assign({}, matchCondition), { createdAt: {
+                $gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                $lte: new Date(`${year}-12-31T23:59:59.999Z`)
+            } });
+    }
+    try {
+        const commits = yield commitSchema_1.default.find(matchCondition)
+            .select('createdAt uuid author _id repository layer project')
+            .populate('repository', 'visibility name')
+            .populate('layer', 'visibility name')
+            .populate('project', 'visibility name')
+            .populate('associated_task', 'task_name')
+            .sort({ createdAt: -1 })
+            .lean();
+        const filteredCommits = commits.reduce((acc, commit) => {
+            const { layer, repository, project } = commit;
+            if ((0, exports.validateVisibility)(project.visibility, layer.visibility, repository.visibility)) {
+                acc.push(commit);
+            }
+            return acc;
+        }, []);
+        req.commits = filteredCommits;
+        next();
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
+    ;
+});
+exports.getProfileCommitsFiltered = getProfileCommitsFiltered;
+const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
+    if (pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open') {
+        return true;
+    }
+    return false;
+};
+exports.validateVisibility = validateVisibility;
 //# sourceMappingURL=commits-middlewares.js.map

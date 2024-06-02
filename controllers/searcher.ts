@@ -20,12 +20,12 @@ export const searcher = async(req: Request, res: Response) => {
                 case 'profiles':
                     const users = await User.find({ username: { $regex: searchTerm, $options: 'i' } })
                                             .skip(from)
-                                            .limit(limit);
+                                            .limit(limit)
+                                            .select('username _id photoUrl projects');
                                                         
                     return res.json({ results: users });
 
                 case 'projects':
-
                     const projects = await Project.find({ name: { $regex: searchTerm, $options: 'i' }, visibility: 'public' })
                                             .skip(from)
                                             .limit(limit);                                                     

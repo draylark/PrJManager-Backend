@@ -6,8 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import Repo from '../models/repoSchema';
 import Collaborator from '../models/collaboratorSchema';
-
-
+import Commit from '../models/commitSchema';
+import { validateVisibility } from '../middlewares/helpers-middlewares';
 
 export const createRepository = async (req: Request, res: Response) => {
 
@@ -156,8 +156,6 @@ export const getRepoCollaborators = async (req: Request, res: Response) => {
 
     const minAccess = ['editor', 'manager', 'administrator']
 
-    console.log('repoId', repoId)
-    console.log('searchQuery', searchQuery)
     try {
         if( add ){
             const collaborators = await Collaborator.find({
@@ -339,3 +337,58 @@ export const getReposByLayer = async (req: Request, res: Response) => {
     }
 
 }
+
+
+export const getTopUserRepos = async(req: Request, res: Response) => {
+
+    const { uid } = req.params;
+
+    try {
+
+        // Obtener repositorios del usuario con visibilidad abierta
+        const repos = await Repo.find({ creator: uid, visibility: 'open' })
+                            .select('visibility name _id description layerID projectID')
+                            .populate('layerID', 'visibility _id name')
+                            .populate('projectID', 'visibility _id name')
+                            .lean();
+
+        // Filtrar repositorios por visibilidad
+        const filteredRepos = repos.filter(repo => 
+            validateVisibility(repo.projectID.visibility, repo.layerID.visibility, repo.visibility)
+        );
+
+        const filteredRepoIds = filteredRepos.map(repo => repo._id);
+
+        // Obtener todos los commits de los repositorios filtrados
+        const commits = await Commit.find({ 'author.uid': uid, repository: { $in: filteredRepoIds } });
+
+        // Contar la cantidad de commits por repositorio
+        const commitCounts = commits.reduce((acc, commit) => {
+            acc[commit.repository] = (acc[commit.repository] || 0) + 1;
+            return acc;
+        }, {});
+
+        // Añadir la cantidad de commits a los repositorios
+        const reposWithCommitCounts = filteredRepos.map(repo => ({
+            ...repo,
+            commitCount: commitCounts[repo._id] || 0
+        }));
+
+        // Ordenar repositorios por cantidad de commits en orden descendente
+        const sortedRepos = reposWithCommitCounts.sort((a, b) => b.commitCount - a.commitCount);
+
+        // Seleccionar los tres primeros repositorios
+        const topRepos = sortedRepos.slice(0, 3);
+
+        res.status(200).json({
+            success: true,
+            topRepos
+        });
+
+    } catch (error) {
+        res.status(500).json({ 
+            success: false,
+            message: error.message 
+        });
+    }
+};

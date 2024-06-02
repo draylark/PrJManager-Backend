@@ -23,9 +23,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getReposByLayer = exports.getReposByProject = exports.addRepoCollaborator = exports.addRepoCollaborators = exports.getRepositoriesByUserId = exports.getRepoCollaborators = exports.updateRepos = exports.deleteRepository = exports.updateRepository = exports.getRepositoryById = exports.getRepositories = exports.createRepository = void 0;
+exports.getTopUserRepos = exports.getReposByLayer = exports.getReposByProject = exports.addRepoCollaborator = exports.addRepoCollaborators = exports.getRepositoriesByUserId = exports.getRepoCollaborators = exports.updateRepos = exports.deleteRepository = exports.updateRepository = exports.getRepositoryById = exports.getRepositories = exports.createRepository = void 0;
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
+const commitSchema_1 = __importDefault(require("../models/commitSchema"));
+const helpers_middlewares_1 = require("../middlewares/helpers-middlewares");
 const createRepository = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('llegue hasta createRepository');
     try {
@@ -163,8 +165,6 @@ const getRepoCollaborators = (req, res) => __awaiter(void 0, void 0, void 0, fun
     const { repoId } = req.params;
     const { add, searchQuery = '' } = req.query;
     const minAccess = ['editor', 'manager', 'administrator'];
-    console.log('repoId', repoId);
-    console.log('searchQuery', searchQuery);
     try {
         if (add) {
             const collaborators = yield collaboratorSchema_1.default.find({
@@ -326,4 +326,42 @@ const getReposByLayer = (req, res) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.getReposByLayer = getReposByLayer;
+const getTopUserRepos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uid } = req.params;
+    try {
+        // Obtener repositorios del usuario con visibilidad abierta
+        const repos = yield repoSchema_1.default.find({ creator: uid, visibility: 'open' })
+            .select('visibility name _id description layerID projectID')
+            .populate('layerID', 'visibility _id name')
+            .populate('projectID', 'visibility _id name')
+            .lean();
+        // Filtrar repositorios por visibilidad
+        const filteredRepos = repos.filter(repo => (0, helpers_middlewares_1.validateVisibility)(repo.projectID.visibility, repo.layerID.visibility, repo.visibility));
+        const filteredRepoIds = filteredRepos.map(repo => repo._id);
+        // Obtener todos los commits de los repositorios filtrados
+        const commits = yield commitSchema_1.default.find({ 'author.uid': uid, repository: { $in: filteredRepoIds } });
+        // Contar la cantidad de commits por repositorio
+        const commitCounts = commits.reduce((acc, commit) => {
+            acc[commit.repository] = (acc[commit.repository] || 0) + 1;
+            return acc;
+        }, {});
+        // Añadir la cantidad de commits a los repositorios
+        const reposWithCommitCounts = filteredRepos.map(repo => (Object.assign(Object.assign({}, repo), { commitCount: commitCounts[repo._id] || 0 })));
+        // Ordenar repositorios por cantidad de commits en orden descendente
+        const sortedRepos = reposWithCommitCounts.sort((a, b) => b.commitCount - a.commitCount);
+        // Seleccionar los tres primeros repositorios
+        const topRepos = sortedRepos.slice(0, 3);
+        res.status(200).json({
+            success: true,
+            topRepos
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+exports.getTopUserRepos = getTopUserRepos;
 //# sourceMappingURL=repos.js.map

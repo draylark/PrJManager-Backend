@@ -110,7 +110,7 @@ export const handleAndOrganizeData = (req: Request, res: Response, next: NextFun
             message: 'Internal server error',
         });
     }
-  };
+};
 
 
 export const handleAndOrganizeProjectData = (req: Request, res: Response, next: NextFunction) => {
@@ -217,4 +217,12 @@ export const handleAndOrganizeProjectData = (req: Request, res: Response, next: 
             message: 'Internal server error',
         });
     }
-  };
+};
+
+
+export const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
+    if( pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open' ) {
+        return true;
+    }
+    return false;
+}

@@ -37,6 +37,7 @@ router.get('/:repoID/diff/:hash', [
 ], commitsController.getCommitDiff);
 router.get('/activity/:projectID', commitsController.getProyectCommits);
 router.get('/repo-activity/:repoID', commitsController.getRepoCommits);
+router.get('/get-profile-commits/:uid', [commits_middlewares_1.getProfileCommitsFiltered], commitsController.getProfileCommits);
 router.get('/get-commits-for-dashboard/:uid', commitsController.getCommitsForDashboard);
 router.get('/activity-data/:projectID', [
     validateJWT_1.validateJWT,
