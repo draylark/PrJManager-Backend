@@ -28,8 +28,6 @@ interface Paths {
     commits: string
 }
 
-// https://localhost:3000/api/auth/login
-
 class Server {
     private app: Application
     private port: string

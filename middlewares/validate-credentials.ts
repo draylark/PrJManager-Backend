@@ -5,7 +5,6 @@ const validateCredentials = async( req: Request, res: Response, next: NextFuncti
 
     const code = req.body.code
 
-    console.log('code desde el middleware', code)
 
     if( !code ){
         return res.status(400).json({

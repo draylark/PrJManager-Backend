@@ -13,41 +13,6 @@ import { promisify } from 'util';
 const execAsync = promisify(require('child_process').exec);
 import { generateShortenedUUID } from '../helpers/generateuuids';
 
-// export const callback = async (req: express.Request, res: express.Response) => {
-
-//     const code = req.query.code;
-
-//     if (!code) {
-//       return res.status(400).send('Código de autorización no proporcionado');
-//     }
-  
-//     try {
-
-//       console.log('code', code);
-
-//       const response = await axios.post('https://gitlab.com/oauth/token', {
-//         client_id: process.env.GITLAB_CLIENT_ID, // Utiliza variables de entorno para proteger tus claves
-//         client_secret: process.env.GITLAB_CLIENT_SECRET,
-//         code,
-//         grant_type: 'authorization_code',
-//         redirect_uri: process.env.GITLAB_REDIRECT_URI, // el de aquí debe coincidir con el de GitLab
-//       });
-  
-//       const accessToken = response.data.access_token;
-  
-//       // Aquí puedes utilizar el token de acceso para obtener información del usuario o hacer otras operaciones en GitLab
-//       // ...
-  
-//       res.cookie('gitlabToken', accessToken, { httpOnly: true, secure: true,  maxAge: 2 * 60 * 60 * 1000 });
-//       res.redirect(`${process.env.FRONTEND_URL}/user/projects?gitlab=true`);
-
-//     } catch (error) {
-//       console.log(error.response ? error.response.data : error.message);
-//       res.status(500).send('Error durante la autenticación');
-//     }
-
-// };
-
 
 
 export const getAllGroups = async (req: express.Request, res: express.Response) => {
@@ -298,7 +263,7 @@ export const loadFolderContents = async (req: express.Request, res: express.Resp
 
     const response = await axios.get(url, {
       headers: {
-        'PRIVATE-TOKEN': process.env.GITLAB_READ_REPOS,
+        'PRIVATE-TOKEN': process.env.GITLAB_ACCESS_TOKEN,
       },
     });
 

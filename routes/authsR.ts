@@ -5,7 +5,6 @@ import { usersPostRegistration, usersPostLogin,
 import { check } from 'express-validator'
 import validarCampos from '../middlewares/validar-campos';
 import { isEmailAlreadyExist } from '../middlewares/validar-db';
-import validarJWT from '../middlewares/validar-jwt';
 import validateCredentials from '../middlewares/validate-credentials';
 import { validateJWT } from '../middlewares/validateJWT';
 

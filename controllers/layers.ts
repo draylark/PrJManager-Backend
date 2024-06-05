@@ -12,7 +12,6 @@ export const createLayer = async (req: Request, res: Response) => {
     try {
   
         const gitlabAccessToken = process.env.IDK
-        console.log(gitlabAccessToken)
         const permanentVsibility = 'private'
   
         const path = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
