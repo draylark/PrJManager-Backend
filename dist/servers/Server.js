@@ -18,7 +18,6 @@ const connection_1 = __importDefault(require("../db/connection"));
 const routes_1 = require("../routes");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const express_useragent_1 = __importDefault(require("express-useragent"));
-// https://localhost:3000/api/auth/login
 class Server {
     constructor() {
         this.app = (0, express_1.default)();

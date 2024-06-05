@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const googleapis_1 = require("googleapis");
 const validateCredentials = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const code = req.body.code;
-    console.log('code desde el middleware', code);
     if (!code) {
         return res.status(400).json({
             state: false,

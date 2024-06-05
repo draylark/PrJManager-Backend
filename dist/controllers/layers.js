@@ -22,7 +22,6 @@ const createLayer = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const { name, description, visibility, parent_id = '80502948', creator } = req.body;
     try {
         const gitlabAccessToken = process.env.IDK;
-        console.log(gitlabAccessToken);
         const permanentVsibility = 'private';
         const path = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
         const response = yield axios_1.default.post('https://gitlab.com/api/v4/groups', {
