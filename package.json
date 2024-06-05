@@ -1,8 +1,8 @@
 {
-  "name": "01-proyects-management-app",
+  "name": "prjmanager-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "prjmanager Backend",
+  "main": "app.js",
   "scripts": {
     "start": "node dist/app.js",
     "build": "tsc",
