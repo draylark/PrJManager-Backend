@@ -294,9 +294,10 @@ const updateTaskStatus = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 const formattedReasons = reasons.map(reason => ({
                     uid: uid,
                     text: reason,
-                    date: new Date() // Puedes ajustar la fecha si viene del body o si prefieres usar la fecha actual
+                    date: new Date(),
+                    taskSubmissionDate: task.reviewSubmissionDate
                 }));
-                yield taskSchema_1.default.updateOne({ _id: taskId }, { $push: { reasons_for_rejection: { $each: formattedReasons } } });
+                yield taskSchema_1.default.updateOne({ _id: taskId }, { $push: { reasons_for_rejection: { $each: formattedReasons } }, status: status, reviewSubmissionDate: null });
                 yield Promise.all(task.contributorsIds.map((contributorId) => __awaiter(void 0, void 0, void 0, function* () {
                     const noti = new notisSchema_1.default({
                         type: 'task-rejected',
@@ -371,7 +372,15 @@ exports.updateTaskStatus = updateTaskStatus;
 const sendTaskToRevision = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { taskId } = req.params;
     try {
-        yield taskSchema_1.default.updateOne({ _id: taskId }, { $set: { status: 'approval', reviewSubmissionDate: new Date() } });
+        yield taskSchema_1.default.updateOne({ _id: taskId }, {
+            $set: {
+                status: 'approval',
+                reviewSubmissionDate: new Date()
+            },
+            $push: {
+                reviewSubmissionDates: new Date()
+            }
+        });
         res.status(200).json({
             message: 'The task has been submitted for review.'
         });
@@ -386,10 +395,10 @@ const getUserTasks = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     try {
         const tasks = yield taskSchema_1.default.find({ assigned_to: uid })
             .sort({ createdAt: -1 })
-            .select('_id repository_number_task  priority goals type deadline task_name task_description assigned_to');
+            .select('_id repository_number_task  priority goals type deadline task_name task_description assigned_to status');
         const contributions = yield taskSchema_1.default.find({ contributorsIds: uid })
             .sort({ createdAt: -1 })
-            .select('_id repository_number_task priority goals type deadline task_name task_description assigned_to');
+            .select('_id repository_number_task priority goals type deadline task_name task_description assigned_to status');
         // Combina las tareas y contribuciones
         const combinedTasks = [...tasks, ...contributions];
         // Filtra para obtener un conjunto único basado en `_id`

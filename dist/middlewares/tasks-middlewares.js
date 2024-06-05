@@ -115,6 +115,10 @@ const getTaskData = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
             .populate({
             path: 'readyContributors.uid',
             select: 'username photoUrl _id'
+        })
+            .populate({
+            path: 'reasons_for_rejection.uid',
+            select: 'username photoUrl _id'
         });
         if (!task) {
             return res.status(404).json({

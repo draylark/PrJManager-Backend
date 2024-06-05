@@ -97,6 +97,10 @@ const TaskSchema = new Schema({
         date: {
           type: Date,
           default: Date.now
+        },
+        taskSubmissionDate: {
+          type: Date,
+          default: null
         }
       }
   ],
@@ -131,6 +135,12 @@ const TaskSchema = new Schema({
     type: Date, 
     default: null 
   },
+
+  reviewSubmissionDates: {
+    type: [Date],
+    default: []
+  },
+
   deadline: { 
     type: Date, 
     default: null 

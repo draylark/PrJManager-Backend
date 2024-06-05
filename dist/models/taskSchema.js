@@ -92,6 +92,10 @@ const TaskSchema = new mongoose_1.Schema({
             date: {
                 type: Date,
                 default: Date.now
+            },
+            taskSubmissionDate: {
+                type: Date,
+                default: null
             }
         }
     ],
@@ -122,6 +126,10 @@ const TaskSchema = new mongoose_1.Schema({
     reviewSubmissionDate: {
         type: Date,
         default: null
+    },
+    reviewSubmissionDates: {
+        type: [Date],
+        default: []
     },
     deadline: {
         type: Date,

@@ -110,6 +110,10 @@ export const getTaskData = async(req: Request, res: Response, next: NextFunction
                                 path: 'readyContributors.uid',
                                 select: 'username photoUrl _id'
                             })
+                            .populate({
+                                path: 'reasons_for_rejection.uid',
+                                select: 'username photoUrl _id'
+                            })
         if (!task) {
             return res.status(404).json({
                 message: 'Task not found'
@@ -493,66 +497,65 @@ try {
     }
 
     if (task.type === "assigned") {
-    const isContributor = task.contributorsIds.includes(uid);
-    const itIsTheAssigned = task.assigned_to.toString() === uid;
+        const isContributor = task.contributorsIds.includes(uid);
+        const itIsTheAssigned = task.assigned_to.toString() === uid;
 
-    if (isContributor || itIsTheAssigned) {
-        if(itIsTheAssigned){
-            await Task.updateOne(
-                { _id: taskId },
-                { $set: { readyContributors: task.contributorsIds.map(id => ({ uid: id, date: new Date(), me: false })) } }
-            );
+        if (isContributor || itIsTheAssigned) {
+            if(itIsTheAssigned){
+                await Task.updateOne(
+                    { _id: taskId },
+                    { $set: { readyContributors: task.contributorsIds.map(id => ({ uid: id, date: new Date(), me: false })) } }
+                );
+            } else {
+                await Task.updateOne(
+                    { _id: taskId },
+                    { $set: { readyContributors: { uid, date: new Date(), me: true } } }
+                );
+            }
+
+            // Convertir cada string de notes en un objeto que cumpla con noteSchema
+            const formattedNotes = notes.map(noteText => ({ text: noteText, uid, task: taskId }));
+
+            if (formattedNotes.length > 0) {
+                await Note.insertMany(formattedNotes);
+            }
+
+            if (itIsTheAssigned) {
+                return next();
+            }
+            return res.status(200).json({ message: 'Contributor marked as ready' });
         } else {
-            await Task.updateOne(
-                { _id: taskId },
-                { $set: { readyContributors: { uid, date: new Date(), me: true } } }
+            return res.status(400).json({ message: 'User is not a contributor' });
+        }
+    } else {
+        const isContributor = task.contributorsIds.includes(uid);
+
+        if (isContributor) {
+            const updatedTask = await Task.findOneAndUpdate(
+            { _id: taskId },
+            { $addToSet: { readyContributors: { uid, date: new Date(), me: true } } },
+            { new: true }  // Asegura que el documento retornado sea el actualizado      
             );
+
+            // Convertir cada string de notes en un objeto que cumpla con noteSchema
+            const formattedNotes = notes.map(noteText => ({ text: noteText, uid, task: taskId }));
+
+            if (formattedNotes.length > 0) {
+            await Note.insertMany(formattedNotes);
+            }
+
+            if (updatedTask) {
+            const isReady = allTaskContributorsReady(updatedTask.contributorsIds, updatedTask.readyContributors);
+            if (isReady) {
+                console.log('Task is ready');
+                return next();
+            }
+            }
+            console.log('Task is not ready');
+            return res.status(200).json({ message: 'Contributor marked as ready' });
+        } else {
+            return res.status(400).json({ message: 'User is not a contributor' });
         }
-
-        // Convertir cada string de notes en un objeto que cumpla con noteSchema
-        const formattedNotes = notes.map(noteText => ({ text: noteText, uid, task: taskId }));
-
-        if (formattedNotes.length > 0) {
-        await Note.insertMany(formattedNotes);
-        }
-
-        if (itIsTheAssigned) {
-        return next();
-        }
-        return res.status(200).json({ message: 'Contributor marked as ready' });
-    } else {
-        return res.status(400).json({ message: 'User is not a contributor' });
-    }
-    } else {
-
-    const isContributor = task.contributorsIds.includes(uid);
-
-    if (isContributor) {
-        const updatedTask = await Task.findOneAndUpdate(
-        { _id: taskId },
-        { $addToSet: { readyContributors: { uid, date: new Date(), me: true } } },
-        { new: true }  // Asegura que el documento retornado sea el actualizado      
-        );
-
-        // Convertir cada string de notes en un objeto que cumpla con noteSchema
-        const formattedNotes = notes.map(noteText => ({ text: noteText, uid, task: taskId }));
-
-        if (formattedNotes.length > 0) {
-         await Note.insertMany(formattedNotes);
-        }
-
-        if (updatedTask) {
-        const isReady = allTaskContributorsReady(updatedTask.contributorsIds, updatedTask.readyContributors);
-        if (isReady) {
-            console.log('Task is ready');
-            return next();
-        }
-        }
-        console.log('Task is not ready');
-        return res.status(200).json({ message: 'Contributor marked as ready' });
-    } else {
-        return res.status(400).json({ message: 'User is not a contributor' });
-    }
     }
 } catch (error) {
     console.log(error);

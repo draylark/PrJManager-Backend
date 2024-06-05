@@ -361,12 +361,13 @@ export const updateTaskStatus = async(req: Request, res: Response) => {
                     const formattedReasons = reasons.map(reason => ({
                         uid: uid,
                         text: reason,
-                        date: new Date() // Puedes ajustar la fecha si viene del body o si prefieres usar la fecha actual
+                        date: new Date(), // Puedes ajustar la fecha si viene del body o si prefieres usar la fecha actual
+                        taskSubmissionDate: task.reviewSubmissionDate
                     }));
                     
                     await Task.updateOne(
                         { _id: taskId },
-                        { $push: { reasons_for_rejection: { $each: formattedReasons } } }            
+                        { $push: { reasons_for_rejection: { $each: formattedReasons } }, status: status, reviewSubmissionDate: null }            
                     );
 
                     await Promise.all( task.contributorsIds.map( async (contributorId: string) => {
@@ -445,9 +446,17 @@ export const sendTaskToRevision = async(req: Request, res: Response) => {
 
     try {
         await Task.updateOne(
-            { _id: taskId }, 
-            { $set: { status: 'approval', reviewSubmissionDate: new Date() } }
-        );
+            { _id: taskId },
+            {
+              $set: {
+                status: 'approval',
+                reviewSubmissionDate: new Date()
+              },
+              $push: {
+                reviewSubmissionDates: new Date()
+              }
+            }
+          );
 
         res.status(200).json({
             message: 'The task has been submitted for review.'
@@ -466,12 +475,12 @@ export const getUserTasks = async(req: Request, res: Response) => {
     try {
         const tasks = await Task.find({ assigned_to: uid })
             .sort({ createdAt: -1 })
-            .select('_id repository_number_task  priority goals type deadline task_name task_description assigned_to')
+            .select('_id repository_number_task  priority goals type deadline task_name task_description assigned_to status')
 
 
         const contributions = await Task.find({ contributorsIds: uid })
             .sort({ createdAt: -1 })
-            .select('_id repository_number_task priority goals type deadline task_name task_description assigned_to')
+            .select('_id repository_number_task priority goals type deadline task_name task_description assigned_to status')
 
         // Combina las tareas y contribuciones
         const combinedTasks = [...tasks, ...contributions];
