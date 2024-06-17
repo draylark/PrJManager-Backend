@@ -3,15 +3,6 @@ import axios from 'axios';
 import Layer from '../models/layerSchema';
 import Project from '../models/projectSchema';
 import Repo from '../models/repoSchema';
-import User from '../models/userSchema';
-import archiver from 'archiver';
-import path from 'path';
-import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'fs';
-import { v4 as uuidv4 } from 'uuid';
-import unzipper from 'unzipper';
-import { promisify } from 'util';
-const execAsync = promisify(require('child_process').exec);
-import { generateShortenedUUID } from '../helpers/generateuuids';
 
 
 
@@ -209,7 +200,8 @@ export const loadRepoFiles = async (req: express.Request, res: express.Response)
 
 export const loadContentFile = async (req: express.Request, res: express.Response) => {
   const { repoGitlabID } = req;
-  const { filePath, branch } = req.query
+  const filePath = req.query.filePath as string;
+  const branch = req.query.branch as string;
 
   console.log('branch en el backend',branch)
   if (!repoGitlabID) {
@@ -247,7 +239,7 @@ export const loadContentFile = async (req: express.Request, res: express.Respons
 
 export const loadFolderContents = async (req: express.Request, res: express.Response) => {
   const { repoGitlabID } = req;
-  const { folderPath } = req.query; // Ruta de la carpeta
+  const folderPath = req.query.folderPath as string;
 
   if (!repoGitlabID) {
     return res.status(400).json({ 

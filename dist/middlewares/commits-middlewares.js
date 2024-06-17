@@ -37,14 +37,15 @@ const evalAccess = (cOnLayer, cOnRepo, lVisibility, RVisibility) => {
 };
 const getContributorsCommits = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { taskId } = req.params;
-    const { hashes, contributorsData } = req;
+    const { hashes, contributorsData = [] } = req;
     try {
         const commits = yield commitSchema_1.default.find({ uuid: { $in: hashes } })
             .select('uuid createdAt author associated_task')
             .sort({ createdAt: -1 })
             .lean();
         const initializedContributors = contributorsData.reduce((acc, contributor) => {
-            acc[contributor._id] = {
+            const idKey = contributor === null || contributor === void 0 ? void 0 : contributor._id.toString();
+            acc[idKey] = {
                 id: contributor._id,
                 username: contributor.username,
                 photoUrl: contributor.photoUrl || null,
@@ -54,8 +55,11 @@ const getContributorsCommits = (req, res, next) => __awaiter(void 0, void 0, voi
             };
             return acc;
         }, {});
-        commits.forEach(commit => {
-            const contributor = initializedContributors[commit.author.uid];
+        commits.forEach((commit) => {
+            var _a;
+            //! const idKey = commit?.author?._id.toString();
+            const idKey = (_a = commit === null || commit === void 0 ? void 0 : commit.author) === null || _a === void 0 ? void 0 : _a.uid.toString();
+            const contributor = initializedContributors[idKey];
             if (contributor) {
                 contributor.commits += 1;
                 if (!contributor.firstCommit || new Date(commit.createdAt) < new Date(contributor.firstCommit.createdAt)) {
@@ -66,35 +70,37 @@ const getContributorsCommits = (req, res, next) => __awaiter(void 0, void 0, voi
                 }
             }
         });
-        req.data = initializedContributors;
+        req.contributorsCommitsData = initializedContributors;
         next();
     }
     catch (error) {
-        console.error('Error getting contributors commits:', error);
+        console.error('(getContributorsCommits) Error getting contributors commits:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 exports.getContributorsCommits = getContributorsCommits;
 const getCommitsHashes = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { uuid1, uuid2 } = req.query;
-    console.log('uuid1', uuid1);
-    console.log('uuid2', uuid2);
     try {
         if (uuid2 === '' && uuid1 !== '') {
-            console.log('uuid2 es un string vacio');
             const commit1 = yield commitSchema_1.default.findOne({ uuid: uuid1 })
                 .select('hash repository')
                 .populate('repository');
+            if (!commit1) {
+                return res.status(404).json({ message: 'Commit not found' });
+            }
             req.hash1 = commit1 === null || commit1 === void 0 ? void 0 : commit1.hash;
             req.hash2 = null;
             req.gitlabId = commit1.repository.gitlabId;
             next();
         }
         else if (uuid1 === '' && uuid2 !== '') {
-            console.log('uuid1 es un string vacio');
             const commit1 = yield commitSchema_1.default.findOne({ uuid: uuid2 })
                 .select('hash repository')
                 .populate('repository');
+            if (!commit1) {
+                return res.status(404).json({ message: 'Commit not found' });
+            }
             req.hash1 = commit1 === null || commit1 === void 0 ? void 0 : commit1.hash;
             req.hash2 = null;
             req.gitlabId = commit1.repository.gitlabId;
@@ -125,7 +131,7 @@ const getCommitsHashes = (req, res, next) => __awaiter(void 0, void 0, void 0, f
 exports.getCommitsHashes = getCommitsHashes;
 const getCommits = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { task } = req;
-    if (!task.commits_hashes || task.commits_hashes.length === 0) {
+    if (!(task === null || task === void 0 ? void 0 : task.commits_hashes) || task.commits_hashes.length === 0) {
         req.commits = [];
         return next();
     }
@@ -162,7 +168,8 @@ exports.findCommit = findCommit;
 const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const { levels, owner, type } = req;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year;
+    const year = parseInt(queryYear, 10);
     const uid = req.query.uid;
     if (owner && owner === true) {
         return next();
@@ -190,9 +197,9 @@ const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void
                     const commitWithIdsOnly = Object.assign(Object.assign({}, commit), { layer: layer._id, repository: repository._id });
                     return commitWithIdsOnly;
                 }
-            })))).filter(commit => commit !== undefined);
+            })))).filter((commit) => commit !== undefined);
             // ! Commits en el caso de que el usuario no tiene acceso como colaborador ( state: false ), pero los padres son abiertos
-            const uniqueCommitsOnOpenParents = (yield Promise.all(commits.filter(openCommit => !filteredCommitsBaseOnLevel.some(commit => commit._id.toString() === openCommit._id.toString())).map((commit) => __awaiter(void 0, void 0, void 0, function* () {
+            const uniqueCommitsOnOpenParents = (yield Promise.all(commits.filter((openCommit) => !filteredCommitsBaseOnLevel.some(commit => commit._id.toString() === openCommit._id.toString())).map((commit) => __awaiter(void 0, void 0, void 0, function* () {
                 const { layer: { _id: layerId, visibility: layerVis }, repository: { _id: repoId, visibility: repoVis } } = commit, rest = __rest(commit, ["layer", "repository"]);
                 const cLayer = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'layer._id': layerId });
                 const cRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'repository._id': repoId });
@@ -200,7 +207,7 @@ const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void
                     return Object.assign(Object.assign({}, rest), { layer: layerId, repository: repoId });
                 }
                 ;
-            })))).filter(commit => commit !== undefined);
+            })))).filter((commit) => commit !== undefined);
             req.commits = [...filteredCommitsBaseOnLevel, ...uniqueCommitsOnOpenParents];
             return next();
         }
@@ -210,10 +217,14 @@ const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void
                 .select('-hash')
                 .sort({ createdAt: -1 })
                 .lean();
+            if (commits.length === 0) {
+                req.commits = [];
+                return next();
+            }
             // ! Commits en el caso de que el usuario sea un guest
             const filteredCommitsBaseOnLevel = commits.reduce((acc, commit) => {
                 const { layer, repository } = commit;
-                if (layer && repository && levels.includes(layer.visibility) && levels.includes(repository.visibility)) {
+                if (layer && repository && levels && levels.includes(layer.visibility) && levels.includes(repository.visibility)) {
                     const commitWithIdsOnly = Object.assign(Object.assign({}, commit), { layer: layer._id, repository: repository._id });
                     acc.push(commitWithIdsOnly);
                 }
@@ -228,7 +239,7 @@ const getProjectCommitsBaseOnAccess = (req, res, next) => __awaiter(void 0, void
     catch (error) {
         console.log(error);
         return res.status(500).json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         });
     }
@@ -289,7 +300,7 @@ const getCommitsDates = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
             .populate('associated_task', 'task_name')
             .sort({ createdAt: -1 })
             .lean();
-        req.commits = { commits1, commits2 };
+        req.commitsData = { commits1, commits2 };
         next();
     }
     catch (error) {
@@ -315,7 +326,7 @@ const getProjectCommitsDates = (req, res, next) => __awaiter(void 0, void 0, voi
             .populate('associated_task', 'task_name')
             .sort({ createdAt: -1 })
             .lean();
-        req.commits = { commits1, commits2 };
+        req.commitsData = { commits1, commits2 };
         next();
     }
     catch (error) {

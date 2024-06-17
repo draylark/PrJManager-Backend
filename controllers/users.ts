@@ -6,16 +6,18 @@ import Noti from '../models/notisSchema';
 import Follower from '../models/followerSchema';
 import { parseArgs } from 'util';
 
-export const findUsers = async (req: Request, res: Response) => {
-    const search = req.query.search;
 
-    
+
+
+
+export const findUsers = async (req: Request, res: Response) => {
+    const search = req.query.search as string;
 
     try {
-        let queryConditions = [{ username: { $regex: search, $options: 'i' } }];
+        let queryConditions: Record<string, any>[] = [{ username: { $regex: search, $options: 'i' } }];
 
         // Intentar agregar la condición de búsqueda por ID si 'search' es un ID válido
-        if (search.match(/^[0-9a-fA-F]{24}$/)) {
+        if (search &&  search.match(/^[0-9a-fA-F]{24}$/)) {
             queryConditions.push({ _id: search });
         }
 
@@ -371,7 +373,7 @@ export const unfollowProfile = async( req: Request, res: Response ) => {
             })
 
             return res.json({
-                friendshipRef: friendshipRef._id,
+                friendshipRef: friendshipRef?._id,
                 type: 'friendship',
                 success: true,
                 message: 'Profile unfollowed successfully'

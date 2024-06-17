@@ -28,10 +28,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const gitController = __importStar(require("../controllers/gitlab"));
-const DB_validators_1 = require("../middlewares/DB-validators");
-const validateJWT_1 = require("../middlewares/validateJWT");
+const DB_validators_1 = require("../middlewares/others/DB-validators");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
 const multer_1 = __importDefault(require("multer"));
-const commits_middlewares_1 = require("../middlewares/commits-middlewares");
+const commits_middlewares_1 = require("../middlewares/commit/commits-middlewares");
 const upload = (0, multer_1.default)({ dest: 'uploads/' });
 const router = express_1.default.Router();
 router.get('/get-layers/:userId', gitController.getAllGroups);

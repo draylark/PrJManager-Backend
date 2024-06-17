@@ -1,35 +1,34 @@
 import { Response, Request } from 'express'
-import * as nodegit from 'nodegit';
 import Project from '../models/projectSchema';
 import Collaborator from '../models/collaboratorSchema';
-import User from '../models/userSchema';
 import Task from '../models/taskSchema';
-import fs from 'fs';
-import path from 'path';
 import Readme from '../models/readmeSchema';
 import Commit from '../models/commitSchema';
 import Noti from '../models/notisSchema';
+import { C_On_Project, Project_i } from '../interfaces/interfaces';
+import { Types } from 'mongoose';
+
+interface CollabOnProject extends Omit<Project_i, '_id'> {
+    pid: Types.ObjectId,
+    accessLevel: string
+}
+
 
 export const getProjects = async(req: Request, res: Response) => {
     const { uid } = req.params;
 
     try {
         const myProjects = await Project.find({ owner: uid })
-        const collaboratorProjects = await Collaborator.find({ uid, state: true, 'project._id': { $exists: true } })
+        const collaboratorProjects: C_On_Project[] = await Collaborator.find({ uid, state: true, 'project._id': { $exists: true } })
                                                         .populate('project._id')
                                                         .lean();
 
-        const projectsFromCollaborators = collaboratorProjects.reduce((acc, collaborator) => {
-            // Desestructura para obtener el documento del proyecto poblado y el nivel de acceso directamente.
+        const projectsFromCollaborators: CollabOnProject[] = collaboratorProjects.reduce<CollabOnProject[]>((acc, collaborator) => {
             const { _id: { _id, ...rest }, accessLevel } = collaborator.project;
-        
-            // Verifica si hay contenido relevante para agregar al acumulador.
             if (rest) {
-                // Combina la información del proyecto poblado con el nivel de acceso y lo agrega al acumulador.
-                acc.push({ pid: _id, ...rest, accessLevel });
+            const data = { pid: _id, ...rest, accessLevel } as CollabOnProject;
+                acc.push(data);
             }
-            
-            // Retorna el acumulador para la siguiente iteración.
             return acc;
         }, []); // Inicia con un array vacío como valor acumulado.
 
@@ -51,10 +50,10 @@ export const postProject = async(req: Request, res: Response) => {
     const { readmeContent } = req.body
 
     try {
-        const readme = new Readme({ project: project._id, content: readmeContent })
+        const readme = new Readme({ project: project?._id, content: readmeContent })
         await readme.save()
 
-        await Project.findByIdAndUpdate( project._id, { readme: readme._id }, { new: true } )
+        await Project.findByIdAndUpdate( project?._id, { readme: readme._id }, { new: true } )
 
         res.json({
             project,
@@ -199,7 +198,7 @@ export const getReadme = async(req: Request, res: Response) => {
     try {
         const readme = await Readme.findById( readmeID );
         res.json({
-            readmeContent: readme.content
+            readmeContent: readme?.content
         });
     } catch (error) {
         res.status(400).json({
@@ -221,7 +220,7 @@ export const response = async(req: Request, res: Response) => {
 
     const requestStatus = req.query.requestStatus;
 
-    let messageParts = []; // Para acumular partes del mensaje basado en las operaciones realizadas
+    let messageParts: string[] = []; // Para acumular partes del mensaje basado en las operaciones realizadas
 
     // Crear mensajes según el estado de cada operación
     if (deletingMiddlewareState) {

@@ -1,13 +1,9 @@
 import { Request, Response } from 'express';
-import multer from 'multer';
-import nodegit from 'nodegit';
-import { exec } from 'child_process';
-import fs from 'fs';
-import path from 'path';
 import Repo from '../models/repoSchema';
 import Collaborator from '../models/collaboratorSchema';
 import Commit from '../models/commitSchema';
-import { validateVisibility } from '../middlewares/helpers-middlewares';
+import { validateVisibility } from '../middlewares/others/helpers-middlewares';
+import { PopulatedRepositoryBase2 } from '../interfaces/interfaces';
 
 export const createRepository = async (req: Request, res: Response) => {
 
@@ -152,7 +148,8 @@ export const updateRepos = async (req: Request, res: Response) => {
 
 export const getRepoCollaborators = async (req: Request, res: Response) => {
     const { repoId } = req.params;
-    const { add, searchQuery = '' } = req.query;
+    const { add } = req.query;
+    const searchQuery = req.query.searchQuery as string;
 
     const minAccess = ['editor', 'manager', 'administrator']
 
@@ -199,84 +196,6 @@ export const getRepositoriesByUserId = async (req: Request, res: Response) => {
     }
 };
 
-
-
-export const addRepoCollaborators = async (req: Request, res: Response) => {
-
-    const { repoId, collaborators } = req.body;
-
-    if (!repoId || !collaborators || collaborators.length === 0) {
-        return res.status(200).json({
-            msg: 'No hay colaboradores que agregar'
-        });
-    }
-
-    try {
-        await Promise.all(collaborators.map(async (collaborator) => {
-            const existingCollaborator = await Collaborator.findOne({
-                repository: repoId,
-                user: collaborator.id
-            });
-
-            if (existingCollaborator) {
-                await Collaborator.findByIdAndUpdate(existingCollaborator._id, {
-                    accessLevel: collaborator.accessLevel
-                });
-            } else {
-                const newRepoCollaborator = new Collaborator({
-                    repository: repoId,
-                    user: collaborator.id,
-                    accessLevel: collaborator.accessLevel
-                });
-                await newRepoCollaborator.save();
-            }
-        }));
-
-        res.status(200).json({ msg: 'Colaboradores agregados correctamente' });
-
-    } catch (error) {
-        res.status(500).json({ msg: 'Error al agregar los colaboradores', error });
-    }
-
-}
-
-
-export const addRepoCollaborator = async (req: Request, res: Response) => {
-    const { uid, project, layer, repository } = req.body;
-
-    try {
-        // Crear un objeto con la información del colaborador
-        const collaboratorData = {
-            uid
-        };
-
-        if( project && project._id ) {
-            collaboratorData.project = { _id: project._id, accessLevel: project.accessLevel };
-        }
-
-        // Agregar layer y repository si están presentes y son válidos
-        if (layer && layer._id) {
-            collaboratorData.layer = { _id: layer._id, accessLevel: layer.accessLevel };
-        }
-        if (repository && repository._id) {
-            collaboratorData.repository = { _id: repository._id, accessLevel: repository.accessLevel };
-        }
-
-        const newCollaborator = new Collaborator(collaboratorData);
-        await newCollaborator.save();
-
-        res.status(200).json({ msg: 'Colaborador agregado correctamente', colaborador: newCollaborator });
-
-    } catch (error) {
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                msg: 'Error de validación al agregar el colaborador',
-                errores: error.errors
-            });
-        }
-        res.status(500).json({ msg: 'Error al agregar el colaborador', error: error.message });
-    }
-};
 
 
 
@@ -346,7 +265,7 @@ export const getTopUserRepos = async(req: Request, res: Response) => {
     try {
 
         // Obtener repositorios del usuario con visibilidad abierta
-        const repos = await Repo.find({ creator: uid, visibility: 'open' })
+        const repos: PopulatedRepositoryBase2[] = await Repo.find({ creator: uid, visibility: 'open' })
                             .select('visibility name _id description layerID projectID')
                             .populate('layerID', 'visibility _id name')
                             .populate('projectID', 'visibility _id name')
@@ -364,14 +283,15 @@ export const getTopUserRepos = async(req: Request, res: Response) => {
 
         // Contar la cantidad de commits por repositorio
         const commitCounts = commits.reduce((acc, commit) => {
-            acc[commit.repository] = (acc[commit.repository] || 0) + 1;
+            const repoKey = commit.repository.toString();
+            acc[repoKey] = (acc[repoKey] || 0) + 1;
             return acc;
         }, {});
 
         // Añadir la cantidad de commits a los repositorios
         const reposWithCommitCounts = filteredRepos.map(repo => ({
             ...repo,
-            commitCount: commitCounts[repo._id] || 0
+            commitCount: commitCounts[repo._id.toString()] || 0
         }));
 
         // Ordenar repositorios por cantidad de commits en orden descendente

@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { validateJWT } from '../middlewares/validateJWT';
+import { validateJWT } from '../middlewares/auth/validateJWT';
 import * as commitsController from '../controllers/commits';
-import { validateRepositoryExistance } from '../middlewares/DB-validators';
-import { findCommit, getProjectCommitsBaseOnAccess, getProfileCommitsFiltered } from '../middlewares/commits-middlewares';
-import { validateUserAccessOnProject, validateProjectExistance } from '../middlewares/project-middlewares';
+import { validateRepositoryExistance } from '../middlewares/others/DB-validators';
+import { findCommit, getProjectCommitsBaseOnAccess, getProfileCommitsFiltered } from '../middlewares/commit/commits-middlewares';
+import { validateUserAccessOnProject, validateProjectExistance } from '../middlewares/project/project-middlewares';
 
 
 const router = Router()

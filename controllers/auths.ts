@@ -394,7 +394,7 @@ const createToken = async (req: Request, res: Response) => {
 
     try {
         
-        const token = await generateJWT( uid )
+        const token = await generateJWT( uid, true )
 
         res.json({
             status: true,

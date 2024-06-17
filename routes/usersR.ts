@@ -1,16 +1,15 @@
 import { Router } from 'express';
 import { check } from 'express-validator'
 import * as uController from '../controllers/users';
-import validarJWT from '../middlewares/validar-jwt';
-import { showRole } from '../middlewares/validar-roles';
+
 import { isIdExist } from '../helpers/dvValidators';
-import { getProjectsLength, getCreatedProjectsDates } from '../middlewares/project-middlewares';
-import { getCommitsLength, getCommitsDates, getProjectCommitsDates } from '../middlewares/commits-middlewares';
-import { getCompletedTasksLength, getTasksDates, getProjectTasksDates } from '../middlewares/tasks-middlewares';
-import { getCreatedLayersDates, getProjectCreatedLayersDates } from '../middlewares/layer-middlewares';
-import { getCreatedReposDates, geProjectCreatedReposDates } from '../middlewares/repository-middlewares';
-import { handleAndOrganizeData, handleAndOrganizeProjectData } from '../middlewares/helpers-middlewares';
-import { validateJWT } from '../middlewares/validateJWT';
+import { getProjectsLength, getCreatedProjectsDates } from '../middlewares/project/project-middlewares';
+import { getCommitsLength, getCommitsDates, getProjectCommitsDates } from '../middlewares/commit/commits-middlewares';
+import { getCompletedTasksLength, getTasksDates, getProjectTasksDates } from '../middlewares/tasks/tasks-middlewares';
+import { getCreatedLayersDates, getProjectCreatedLayersDates } from '../middlewares/layer/layer-middlewares';
+import { getCreatedReposDates, geProjectCreatedReposDates } from '../middlewares/repository/repository-middlewares';
+import { handleAndOrganizeData, handleAndOrganizeProjectData } from '../middlewares/others/helpers-middlewares';
+import { validateJWT } from '../middlewares/auth/validateJWT';
 
 const router = Router()
 
@@ -80,10 +79,8 @@ router.delete('/unfollow-profile/:profileUID',  uController.unfollowProfile);
 
 
 router.delete('/:id', [
-    validarJWT,
     check('id', 'No es un ID valido').isMongoId(),
     check('id').custom( isIdExist ),
-    showRole('ADMIN_ROLE', 'VENTAS_ROLE'),
 ], uController.deleteUsers);
 
 router.put('/update-my-links/:uid', uController.updateMyLinks);

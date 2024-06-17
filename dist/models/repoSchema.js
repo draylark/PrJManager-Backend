@@ -60,7 +60,7 @@ const repoSchema = new mongoose_1.Schema({
     },
     commits: {
         type: Number,
-        required: true,
+        default: 0,
     },
     creator: {
         type: mongoose_1.Schema.Types.ObjectId,

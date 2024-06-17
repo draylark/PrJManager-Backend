@@ -29,8 +29,9 @@ const getCommitsByRepo = (req, res) => __awaiter(void 0, void 0, void 0, functio
 });
 exports.getCommitsByRepo = getCommitsByRepo;
 const getCommitDiff = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { repoGitlabID, commit: { hash } } = req;
-    const diffUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/commits/${hash}/diff`;
+    const repoGitlabID = req.repoGitlabID;
+    const commit = req.commit;
+    const diffUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/commits/${commit === null || commit === void 0 ? void 0 : commit.hash}/diff`;
     const branchesUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/branches`;
     try {
         // Realiza ambas llamadas API simultáneamente
@@ -51,7 +52,7 @@ const getCommitDiff = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         }
         const diffData = yield diffResponse.json();
         const branches = yield branchesResponse.json();
-        const branchesWithCommit = branches.filter(branch => branch.commit && branch.commit.id === hash);
+        const branchesWithCommit = branches.filter(branch => branch.commit && branch.commit.id === (commit === null || commit === void 0 ? void 0 : commit.hash));
         // Envía los resultados en la respuesta
         res.json({
             diff: diffData,
@@ -67,7 +68,8 @@ exports.getCommitDiff = getCommitDiff;
 const getProyectCommits = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const { owner, commits } = req;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
     try {
         if (owner && owner === true) {
             let matchConditions = { project: projectID };
@@ -104,7 +106,8 @@ const getProyectCommits = (req, res) => __awaiter(void 0, void 0, void 0, functi
 exports.getProyectCommits = getProyectCommits;
 const getRepoCommits = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
     try {
         let matchConditions = { repository: repoID };
         if (year) {
@@ -133,7 +136,9 @@ const getRepoCommits = (req, res) => __awaiter(void 0, void 0, void 0, function*
 });
 exports.getRepoCommits = getRepoCommits;
 const getCommitsForDashboard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { startDate, endDate, uid } = req.query;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+    const uid = req.params.uid;
     try {
         let matchConditions = { 'author.uid': uid };
         if (startDate && endDate) {

@@ -2,9 +2,9 @@ import express, { Application } from 'express'
 import cors from 'cors'
 import dbConnection from '../db/connection'
 import { authRouter, usersRouter, proyectsRouter, tasksRouter,
-     notisRouter, clientRouter, eventRouter, reposRouter, gitlabRouter, 
+     notisRouter, reposRouter, gitlabRouter, 
      commentsRouter, searcherRouter, friendsRouter, likesRouter, 
-     extensionRouter, layersRouter, commitsRouter 
+     layersRouter, commitsRouter 
 } from '../routes'
 import cookieParse  from 'cookie-parser'
 import useragent from "express-useragent"
@@ -15,15 +15,12 @@ interface Paths {
     proyects: string,
     tasks: string,
     notis: string
-    client: string
-    event: string
     repos: string
     gitlab: string,
     comments: string,
     searcher: string,
     friends: string,
     likes: string,
-    extension: string
     layer: string,
     commits: string
 }
@@ -42,15 +39,12 @@ class Server {
             proyects: '/api/projects',
             tasks: '/api/tasks',
             notis: '/api/notis',
-            client: '/api/client',
-            event: '/api/event',
             repos: '/api/repos',
             gitlab: '/api/gitlab',
             comments: '/api/comments',
             searcher: '/api/searcher',
             friends: '/api/friends',
             likes: '/api/likes',
-            extension: '/api/extension',
             layer: '/api/layer',
             commits: '/api/commits'
         }
@@ -85,25 +79,19 @@ class Server {
     }
 
     routes(){
-        
         this.app.use( this.paths.auth, authRouter)
         this.app.use( this.paths.users, usersRouter)
         this.app.use( this.paths.proyects, proyectsRouter)
         this.app.use( this.paths.tasks, tasksRouter)
         this.app.use( this.paths.notis, notisRouter)
-        this.app.use( this.paths.client, clientRouter)
-        this.app.use( this.paths.event, eventRouter)
         this.app.use( this.paths.repos, reposRouter)
         this.app.use( this.paths.gitlab, gitlabRouter)
         this.app.use( this.paths.comments, commentsRouter)
         this.app.use( this.paths.searcher, searcherRouter)
         this.app.use( this.paths.friends, friendsRouter)
         this.app.use( this.paths.likes, likesRouter)
-        this.app.use( this.paths.extension, extensionRouter)
         this.app.use( this.paths.layer, layersRouter)
         this.app.use( this.paths.commits, commitsRouter)
-        
-
     }
 
 }

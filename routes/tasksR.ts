@@ -1,13 +1,11 @@
 import { Router } from 'express';
 import * as tasksController from '../controllers/tasks';
-import validarJWT from '../middlewares/validar-jwt';
-import { validateRepositoryExistance } from '../middlewares/DB-validators';
-import { validateJWT } from '../middlewares/validateJWT';
-import { validateUserAccessOnProject } from '../middlewares/project-middlewares';
-import { validateProjectExistance } from '../middlewares/project-middlewares';
-import { getCommits, getContributorsCommits } from '../middlewares/commits-middlewares';
-import { getProjectTasksBaseOnAccess, getProjectTasksBaseOnAccessForHeatMap, validateCollaboratorAccess, getTaskData, updateParticipation, getTaskContributors, getProfileTasksFiltered } from '../middlewares/tasks-middlewares';
-import { validateRepositoryExistance as getRepo } from '../middlewares/repository-middlewares';
+import { validateRepositoryExistance } from '../middlewares/others/DB-validators';
+import { validateJWT } from '../middlewares/auth/validateJWT';
+import { validateUserAccessOnProject, validateProjectExistance } from '../middlewares/project/project-middlewares';
+import { getCommits, getContributorsCommits } from '../middlewares/commit/commits-middlewares';
+import { getProjectTasksBaseOnAccess, getProjectTasksBaseOnAccessForHeatMap, validateCollaboratorAccess, getTaskData, updateParticipation, getTaskContributors, getProfileTasksFiltered } from '../middlewares/tasks/tasks-middlewares';
+import { validateRepositoryExistance as getRepo } from '../middlewares/repository/repository-middlewares';
 
 
 

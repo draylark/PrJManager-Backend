@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProfileTasksFiltered = exports.getProjectTasksDates = exports.getTasksDates = exports.updateParticipation = exports.getCompletedTasksLength = exports.validateCollaboratorAccess = exports.getProjectTasksBaseOnAccess = exports.getProjectTasksBaseOnAccessForHeatMap = exports.getTaskData = exports.validateUserAccessForTaskData = exports.getTaskContributors = void 0;
+exports.getProfileTasksFiltered = exports.getProjectTasksDates = exports.getTasksDates = exports.updateParticipation = exports.getCompletedTasksLength = exports.validateCollaboratorAccess = exports.getProjectTasksBaseOnAccess = exports.getProjectTasksBaseOnAccessForHeatMap = exports.getTaskData = exports.getTaskContributors = void 0;
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
 const noteSchema_1 = __importDefault(require("../models/noteSchema"));
@@ -36,12 +36,30 @@ const evalAccess = (cOnLayer, cOnRepo, lVisibility, RVisibility) => {
     }
     return false;
 };
+const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
+    if (pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open') {
+        return true;
+    }
+    return false;
+};
+const allTaskContributorsReady = (contributorsIds, readyContributors) => {
+    if (contributorsIds.length !== readyContributors.length) {
+        return false;
+    }
+    const sortedContributorsIds = contributorsIds.slice().sort().map(id => id.toString());
+    const sortedReadyContributors = readyContributors.slice().sort((a, b) => a.uid.toString().localeCompare(b.uid.toString()));
+    for (let i = 0; i < sortedContributorsIds.length; i++) {
+        if (sortedContributorsIds[i] !== sortedReadyContributors[i].uid.toString()) {
+            return false;
+        }
+    }
+    return true;
+};
 const getTaskContributors = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { taskId } = req.params;
     try {
         const task = yield taskSchema_1.default.findById(taskId)
-            .select('commits_hashes');
-        const contributorsData = yield taskSchema_1.default.findById(taskId)
+            .select('commits_hashes contributorsIds')
             .populate({
             path: 'contributorsIds',
             select: 'username photoUrl _id'
@@ -52,7 +70,7 @@ const getTaskContributors = (req, res, next) => __awaiter(void 0, void 0, void 0
             });
         }
         req.hashes = task.commits_hashes;
-        req.contributorsData = contributorsData.contributorsIds;
+        req.contributorsData = task.contributorsIds;
         next();
     }
     catch (error) {
@@ -64,38 +82,6 @@ const getTaskContributors = (req, res, next) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.getTaskContributors = getTaskContributors;
-const validateUserAccessForTaskData = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { projectID } = req.params;
-    const uid = req.query.uid;
-    try {
-        const collaboratorOn = yield collaboratorSchema_1.default.find({
-            uid,
-            projectID,
-            state: true,
-            $or: [
-                { 'layer._id': { $exists: true } },
-                { 'repository._id': { $exists: true } }
-            ]
-        })
-            .populate('layer._id')
-            .populate('repository._id');
-        if (!collaboratorOn) {
-            req.type = 'guest';
-            return next();
-        }
-        req.collaboratorOn = collaboratorOn;
-        req.type = 'collaborator';
-        next();
-    }
-    catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            msg: 'Internal Server error',
-            error
-        });
-    }
-});
-exports.validateUserAccessForTaskData = validateUserAccessForTaskData;
 const getTaskData = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { taskId } = req.params;
     try {
@@ -140,8 +126,9 @@ exports.getTaskData = getTaskData;
 const getProjectTasksBaseOnAccessForHeatMap = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const uid = req.query.uid;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
-    const { levels, owner, type } = req;
+    const queryYear = req.query.year;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
+    const { levels = [], owner, type } = req;
     if (owner && owner === true) {
         return next();
     }
@@ -164,11 +151,10 @@ const getProjectTasksBaseOnAccessForHeatMap = (req, res, next) => __awaiter(void
                 const cRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, state: true, 'repository._id': repoId });
                 if (cLayer && cRepo) {
                     return Object.assign(Object.assign({}, rest), { layer_related_id: taskId, repository_related_id: repoId });
-                    ;
                 }
-            })))).filter(task => task !== undefined);
+            })))).filter((task) => task !== undefined);
             // ! Tareas en el caso de que el usuario no tiene acceso como colaborador ( state: false ), pero los padres son abiertos
-            const uniqueTasksOnOpenParents = (yield Promise.all(tasks.filter(openTask => !filteredTasksBaseOnAccess.some(task => task._id.toString() === openTask._id.toString())).map((task) => __awaiter(void 0, void 0, void 0, function* () {
+            const uniqueTasksOnOpenParents = (yield Promise.all(tasks.filter((openTask) => !filteredTasksBaseOnAccess.some(task => task._id.toString() === openTask._id.toString())).map((task) => __awaiter(void 0, void 0, void 0, function* () {
                 const { layer_related_id: { _id: taskId, visibility: layerVis }, repository_related_id: { _id: repoId, visibility: repoVis } } = task, rest = __rest(task, ["layer_related_id", "repository_related_id"]);
                 const cLayer = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'layer._id': taskId });
                 const cRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'repository._id': repoId });
@@ -176,7 +162,7 @@ const getProjectTasksBaseOnAccessForHeatMap = (req, res, next) => __awaiter(void
                     return Object.assign(Object.assign({}, rest), { layer_related_id: taskId, repository_related_id: repoId });
                 }
                 ;
-            })))).filter(task => task !== undefined);
+            })))).filter((task) => task !== undefined);
             req.tasks = [...filteredTasksBaseOnAccess, ...uniqueTasksOnOpenParents];
             next();
         }
@@ -201,7 +187,7 @@ const getProjectTasksBaseOnAccessForHeatMap = (req, res, next) => __awaiter(void
     catch (error) {
         console.log(error);
         return res.status(500).json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         });
     }
@@ -209,7 +195,7 @@ const getProjectTasksBaseOnAccessForHeatMap = (req, res, next) => __awaiter(void
 exports.getProjectTasksBaseOnAccessForHeatMap = getProjectTasksBaseOnAccessForHeatMap;
 const getProjectTasksBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
-    const { levels, owner, type } = req;
+    const { levels = [], owner, type } = req;
     const uid = req.query.uid;
     if (owner && owner === true) {
         return next();
@@ -226,11 +212,10 @@ const getProjectTasksBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0
                 const cRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, state: true, 'repository._id': repoId });
                 if (cLayer && cRepo) {
                     return Object.assign(Object.assign({}, rest), { layer_related_id: taskId, repository_related_id: repoId });
-                    ;
                 }
-            })))).filter(task => task !== undefined);
+            })))).filter((task) => task !== undefined);
             // ! Tareas en el caso de que el usuario no tiene acceso como colaborador ( state: false ), pero los padres son abiertos
-            const uniqueTasksOnOpenParents = (yield Promise.all(tasks.filter(openTask => !filteredTasksBaseOnAccess.some(task => task._id.toString() === openTask._id.toString())).map((task) => __awaiter(void 0, void 0, void 0, function* () {
+            const uniqueTasksOnOpenParents = (yield Promise.all(tasks.filter((openTask) => !filteredTasksBaseOnAccess.some(task => task._id.toString() === openTask._id.toString())).map((task) => __awaiter(void 0, void 0, void 0, function* () {
                 const { layer_related_id: { _id: layerId, visibility: layerVis }, repository_related_id: { _id: repoId, visibility: repoVis } } = task, rest = __rest(task, ["layer_related_id", "repository_related_id"]);
                 const cLayer = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'layer._id': layerId });
                 const cRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, 'repository._id': repoId });
@@ -238,10 +223,12 @@ const getProjectTasksBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0
                     return Object.assign(Object.assign({}, rest), { layer_related_id: layerId, repository_related_id: repoId });
                 }
                 ;
-            })))).filter(task => task !== undefined);
+            })))).filter((task) => task !== undefined);
             const filteredTasksBaseOnLevel = [...filteredTasksBaseOnAccess, ...uniqueTasksOnOpenParents];
-            const completedTasks = filteredTasksBaseOnLevel.filter(task => task.status === 'completed');
-            const approvalTasks = filteredTasksBaseOnLevel.filter(task => task.status === 'approval');
+            // Filtrar tareas completadas
+            const completedTasks = filteredTasksBaseOnLevel.filter((task) => task.status === 'completed');
+            // Filtrar tareas en aprobación
+            const approvalTasks = filteredTasksBaseOnLevel.filter((task) => task.status === 'approval');
             req.completedTasks = completedTasks;
             req.approvalTasks = approvalTasks;
             next();
@@ -268,7 +255,7 @@ const getProjectTasksBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0
     catch (error) {
         console.log(error);
         return res.status(500).json({
-            msg: 'Internal Server error',
+            message: 'Internal Server error',
             error
         });
     }
@@ -276,11 +263,12 @@ const getProjectTasksBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0
 exports.getProjectTasksBaseOnAccess = getProjectTasksBaseOnAccess;
 const validateCollaboratorAccess = (minAccess) => {
     return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a, _b, _c, _d, _e, _f;
         const { project, owner } = req;
         const { projectID } = req.params;
         const { uid, layerID, repoID, } = req.query;
         try {
-            if (project.owner.toString() === uid) {
+            if (owner && (project === null || project === void 0 ? void 0 : project.owner.toString()) === uid) {
                 req.authorized = owner;
                 req.type = 'authorized';
                 return next();
@@ -293,21 +281,21 @@ const validateCollaboratorAccess = (minAccess) => {
                 });
             }
             ;
-            if (minAccess.includes(collaboratorOnProject.project.accessLevel)) {
+            if (minAccess.includes((_b = (_a = collaboratorOnProject === null || collaboratorOnProject === void 0 ? void 0 : collaboratorOnProject.project) === null || _a === void 0 ? void 0 : _a.accessLevel) !== null && _b !== void 0 ? _b : 'no-access')) {
                 req.authorized = collaboratorOnProject;
                 req.type = 'authorized';
                 return next();
             }
             ;
             const collaboratorOnLayer = yield collaboratorSchema_1.default.findOne({ uid, projectID, state: true, 'layer._id': layerID });
-            if (collaboratorOnLayer && minAccess.includes(collaboratorOnLayer.layer.accessLevel)) {
+            if (collaboratorOnLayer && minAccess.includes((_d = (_c = collaboratorOnLayer === null || collaboratorOnLayer === void 0 ? void 0 : collaboratorOnLayer.layer) === null || _c === void 0 ? void 0 : _c.accessLevel) !== null && _d !== void 0 ? _d : 'no-access')) {
                 req.authorized = collaboratorOnLayer;
                 req.type = 'authorized';
                 return next();
             }
             ;
             const collaboratorOnRepo = yield collaboratorSchema_1.default.findOne({ uid, projectID, state: true, 'repository._id': repoID });
-            if (collaboratorOnRepo && minAccess.includes(collaboratorOnRepo.repository.accessLevel)) {
+            if (collaboratorOnRepo && minAccess.includes((_f = (_e = collaboratorOnRepo === null || collaboratorOnRepo === void 0 ? void 0 : collaboratorOnRepo.repository) === null || _e === void 0 ? void 0 : _e.accessLevel) !== null && _f !== void 0 ? _f : 'no-access')) {
                 req.authorized = collaboratorOnRepo;
                 req.type = 'authorized';
                 return next();
@@ -386,19 +374,6 @@ const getCompletedTasksLength = (req, res, next) => __awaiter(void 0, void 0, vo
     }
 });
 exports.getCompletedTasksLength = getCompletedTasksLength;
-const allTaskContributorsReady = (contributorsIds, readyContributors) => {
-    if (contributorsIds.length !== readyContributors.length) {
-        return false;
-    }
-    const sortedContributorsIds = contributorsIds.slice().sort().map(id => id.toString());
-    const sortedReadyContributors = readyContributors.slice().sort((a, b) => a.uid.toString().localeCompare(b.uid.toString()));
-    for (let i = 0; i < sortedContributorsIds.length; i++) {
-        if (sortedContributorsIds[i] !== sortedReadyContributors[i].uid.toString()) {
-            return false;
-        }
-    }
-    return true;
-};
 const updateParticipation = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { taskId } = req.params;
     const { uid, notes } = req.body; // Asegúrate de que uid sea un string.
@@ -464,7 +439,8 @@ const updateParticipation = (req, res, next) => __awaiter(void 0, void 0, void 0
 exports.updateParticipation = updateParticipation;
 const getTasksDates = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { uid } = req.params;
-    const { startDate, endDate } = req.query;
+    const endDate = req.query.endDate;
+    const startDate = req.query.startDate;
     try {
         // ! ASSIGNED
         // ? Creacion de tarea
@@ -524,7 +500,7 @@ const getTasksDates = (req, res, next) => __awaiter(void 0, void 0, void 0, func
             completed_at: { $gte: startDate, $lte: endDate },
         })
             .sort({ updatedAt: -1 })
-            .select('completed_at task_name assigned_to _id')
+            .select('completed_at task_name assigned_to _id repository_related_id')
             .populate({
             path: 'repository_related_id',
             select: 'name'
@@ -551,7 +527,7 @@ const getTasksDates = (req, res, next) => __awaiter(void 0, void 0, void 0, func
             return Object.assign(Object.assign({}, rest), { readyContributorData: matchedContributor ? matchedContributor : {} });
         });
         // Puedes adjuntar los conjuntos de tareas a la solicitud para usarlos más adelante si es necesario
-        req.tasks = { taskSet0, tasksSet1, tasksSet2, tasksSet3, tasksSet4, tasksSet5: filteredTasksSet5 };
+        req.tasksData = { taskSet0, tasksSet1, tasksSet2, tasksSet3, tasksSet4, tasksSet5: filteredTasksSet5 };
         next();
     }
     catch (error) {
@@ -630,7 +606,7 @@ const getProjectTasksDates = (req, res, next) => __awaiter(void 0, void 0, void 
             completed_at: { $gte: startDate, $lte: endDate },
         })
             .sort({ updatedAt: -1 })
-            .select('completed_at task_name assigned_to _id')
+            .select('completed_at task_name assigned_to _id repository_related_id')
             .populate({
             path: 'repository_related_id',
             select: 'name'
@@ -650,7 +626,7 @@ const getProjectTasksDates = (req, res, next) => __awaiter(void 0, void 0, void 
             select: 'name'
         });
         // Puedes adjuntar los conjuntos de tareas a la solicitud para usarlos más adelante si es necesario
-        req.tasks = { taskSet0, tasksSet1, tasksSet2, tasksSet3, tasksSet4, tasksSet5 };
+        req.tasksData = { taskSet0, tasksSet1, tasksSet2, tasksSet3, tasksSet4, tasksSet5 };
         next();
     }
     catch (error) {
@@ -681,7 +657,7 @@ const getProfileTasksFiltered = (req, res, next) => __awaiter(void 0, void 0, vo
             .populate('project', 'visibility name');
         const filteredTasks = tasks.reduce((acc, task) => {
             const { project, layer_related_id, repository_related_id } = task;
-            if (validateVisibility(project.visibility, layer_related_id.visibility, repository_related_id.visibility)) {
+            if (validateVisibility(project === null || project === void 0 ? void 0 : project.visibility, layer_related_id === null || layer_related_id === void 0 ? void 0 : layer_related_id.visibility, repository_related_id === null || repository_related_id === void 0 ? void 0 : repository_related_id.visibility)) {
                 acc.push(task);
             }
             return acc;
@@ -698,10 +674,4 @@ const getProfileTasksFiltered = (req, res, next) => __awaiter(void 0, void 0, vo
     }
 });
 exports.getProfileTasksFiltered = getProfileTasksFiltered;
-const validateVisibility = (pVisisibility, lVisibility, rVisibility) => {
-    if (pVisisibility === 'public' && lVisibility === 'open' && rVisibility === 'open') {
-        return true;
-    }
-    return false;
-};
 //# sourceMappingURL=tasks-middlewares.js.map

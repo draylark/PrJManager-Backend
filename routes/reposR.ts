@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import * as repoController from '../controllers/repos';
-import { validateJWT } from '../middlewares/validateJWT';
-import { validateLayerExistance } from '../middlewares/layer-middlewares';
-import { validateProjectExistance, ownerOrCollaborator, validateUserAccessOnProject } from '../middlewares/project-middlewares';
-import { addNewRepoCollaborators } from '../middlewares/collaborators-middlewares';
+import { validateJWT } from '../middlewares/auth/validateJWT';
+import { validateLayerExistance } from '../middlewares/layer/layer-middlewares';
+import { validateProjectExistance, ownerOrCollaborator, validateUserAccessOnProject } from '../middlewares/project/project-middlewares';
+import { addNewRepoCollaborators } from '../middlewares/collaborators/collaborators-middlewares';
 import { createRepoOnGitlab, createRepoOnMongoDB, validateCollaboratorAccessOnRepository, verifyLayerAccessLevelOfNewCollaborator, validateRepositoryExistance, 
-    updateRepoCollaborators, newCollaborators, deleteCollaborators, getProjectReposDataBaseOnAccess, getLayerReposDataBaseOnAccess, verifyProjectLevelAccessOfNewCollaborator, verifyTwoAccessLevelOfCollaborator, verifyLayerRepos } from '../middlewares/repository-middlewares';
+    updateRepoCollaborators, newCollaborators, deleteCollaborators, getProjectReposDataBaseOnAccess, getLayerReposDataBaseOnAccess, verifyProjectLevelAccessOfNewCollaborator, verifyTwoAccessLevelOfCollaborator, verifyLayerRepos } from '../middlewares/repository/repository-middlewares';
 
 const router = Router();
 // CRUD routes

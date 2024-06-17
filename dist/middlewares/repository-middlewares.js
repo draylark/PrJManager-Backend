@@ -34,7 +34,7 @@ const createRepoOnGitlab = (req, res, next) => __awaiter(void 0, void 0, void 0,
     const { layer } = req;
     try {
         const permanentVsibility = 'private';
-        const accessToken = process.env.IDK;
+        const accessToken = process.env.GITLAB_ACCESS_TOKEN;
         // Generar un nombre de repositorio único
         const uniqueSuffix = Date.now().toString(36) + Math.random().toString(36).substring(2);
         const repoName = `repo-${uniqueSuffix}`;
@@ -42,14 +42,14 @@ const createRepoOnGitlab = (req, res, next) => __awaiter(void 0, void 0, void 0,
         const response = yield axios_1.default.post(`https://gitlab.com/api/v4/projects`, {
             name: repoName,
             visibility: permanentVsibility,
-            namespace_id: layer.gitlabId, // ID del grupo donde se creará el repositorio
+            namespace_id: layer === null || layer === void 0 ? void 0 : layer.gitlabId, // ID del grupo donde se creará el repositorio
         }, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },
         });
         console.log('Repositorio creado en Gitlab', response.data);
-        req.repo = response.data;
+        req.gitlabRepo = response.data;
         next();
     }
     catch (error) {
@@ -61,19 +61,19 @@ exports.createRepoOnGitlab = createRepoOnGitlab;
 const createRepoOnMongoDB = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID, layerID } = req.params;
     const { name, visibility, description, uid } = req.body;
-    const { repo } = req;
+    const { gitlabRepo } = req;
     try {
         const newRepo = new repoSchema_1.default({
             name,
             description: description,
             visibility,
-            gitUrl: repo.http_url_to_repo,
-            webUrl: repo.web_url,
+            gitUrl: gitlabRepo === null || gitlabRepo === void 0 ? void 0 : gitlabRepo.http_url_to_repo,
+            webUrl: gitlabRepo === null || gitlabRepo === void 0 ? void 0 : gitlabRepo.web_url,
             projectID,
             layerID,
-            gitlabId: repo.id,
+            gitlabId: gitlabRepo === null || gitlabRepo === void 0 ? void 0 : gitlabRepo.id,
             creator: uid,
-            defaultBranch: repo.default_branch
+            defaultBranch: gitlabRepo === null || gitlabRepo === void 0 ? void 0 : gitlabRepo.default_branch
         });
         yield newRepo.save();
         yield projectSchema_1.default.findByIdAndUpdate(projectID, { $inc: { repositories: 1 } }, { new: true });
@@ -94,7 +94,7 @@ const validateRepositoryExistance = (req, res, next) => __awaiter(void 0, void 0
     const { repoID } = req.params;
     try {
         const repo = yield repoSchema_1.default.findById(repoID);
-        if (!repoID)
+        if (!repo)
             return res.status(404).json({
                 message: 'Repository not found'
             });
@@ -113,10 +113,11 @@ const validateRepositoryExistance = (req, res, next) => __awaiter(void 0, void 0
 exports.validateRepositoryExistance = validateRepositoryExistance;
 const validateCollaboratorAccessOnRepository = (minAccess) => {
     return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a, _b;
         const { project } = req;
         const { repoID } = req.params;
         const uid = req.query.uid;
-        if (project.owner.toString() === uid) {
+        if ((project === null || project === void 0 ? void 0 : project.owner.toString()) === uid) {
             return next();
         }
         const collaborator = yield collaboratorSchema_1.default.findOne({ uid, 'repository._id': repoID });
@@ -125,7 +126,7 @@ const validateCollaboratorAccessOnRepository = (minAccess) => {
                 message: 'You do not have access to this repository'
             });
         }
-        if (!minAccess.includes(collaborator.repository.accessLevel)) {
+        if (!minAccess.includes((_b = (_a = collaborator === null || collaborator === void 0 ? void 0 : collaborator.repository) === null || _a === void 0 ? void 0 : _a.accessLevel) !== null && _b !== void 0 ? _b : 'no-access')) {
             return res.status(400).json({
                 message: 'You do not have the required access level to perform this action'
             });
@@ -145,9 +146,11 @@ const verifyLayerAccessLevelOfNewCollaborator = (req, res, next) => __awaiter(vo
         const { id, photoUrl, name } = collaborator;
         // Comprobar y actualizar o insertar para la capa
         const layerCollaborator = yield collaboratorSchema_1.default.findOne({ uid: id, projectID, 'layer._id': layerID });
-        if (layerCollaborator) {
+        if (layerCollaborator && layerCollaborator.layer) {
             if (!layerCollaborator.state) {
-                layerCollaborator.layer.accessLevel = 'contributor'; // Actualizar el nivel de acceso a colaborador
+                if (layerCollaborator.layer.accessLevel !== undefined) { // Asegurar que accessLevel no es undefined antes de asignar un nuevo valor
+                    layerCollaborator.layer.accessLevel = 'contributor'; // Actualizar el nivel de acceso a colaborador
+                }
                 layerCollaborator.state = true; // Actualizar el estado a true
                 yield layerCollaborator.save(); // Guardar el documento actualizado
             }
@@ -190,18 +193,19 @@ const verifyProjectLevelAccessOfNewCollaborator = (req, res, next) => __awaiter(
 exports.verifyProjectLevelAccessOfNewCollaborator = verifyProjectLevelAccessOfNewCollaborator;
 const verifyTwoAccessLevelOfCollaborator = (minAccess) => {
     return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a, _b, _c, _d;
         const { projectID, layerID } = req.params;
         const { uid } = req.query;
         const { project } = req;
-        if (project.owner.toString() === uid) {
+        if ((project === null || project === void 0 ? void 0 : project.owner.toString()) === uid) {
             return next();
         }
         const cOnProject = yield collaboratorSchema_1.default.findOne({ projectID, uid, state: true, 'project._id': projectID }).lean();
-        if (cOnProject && minAccess.includes(cOnProject.project.accessLevel)) {
+        if (cOnProject && minAccess.includes((_b = (_a = cOnProject === null || cOnProject === void 0 ? void 0 : cOnProject.project) === null || _a === void 0 ? void 0 : _a.accessLevel) !== null && _b !== void 0 ? _b : 'no-access')) {
             return next();
         }
         const cOnLayer = yield collaboratorSchema_1.default.findOne({ projectID, uid, state: true, 'layer._id': layerID }).lean();
-        if (cOnLayer && minAccess.includes(cOnLayer.layer.accessLevel)) {
+        if (cOnLayer && minAccess.includes((_d = (_c = cOnLayer === null || cOnLayer === void 0 ? void 0 : cOnLayer.layer) === null || _c === void 0 ? void 0 : _c.accessLevel) !== null && _d !== void 0 ? _d : 'no-access')) {
             return next();
         }
         return res.status(400).json({
@@ -215,7 +219,7 @@ exports.verifyTwoAccessLevelOfCollaborator = verifyTwoAccessLevelOfCollaborator;
 const verifyLayerRepos = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { layer } = req;
     try {
-        if (layer && (layer === null || layer === void 0 ? void 0 : layer.repositories) >= 3) {
+        if (layer && layer.repositories && layer.repositories >= 3) {
             return res.status(400).json({
                 success: false,
                 message: 'The layer has reached the maximum number of repositories',
@@ -282,7 +286,7 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                         description: `You have been added to a repository.`,
                         recipient: id,
                         from: { name: 'System', ID: projectID },
-                        additionalData: { repoId: repoID, repoName: repo.name, accessLevel, projectName: project.name, layerName: layer.name, layerId: layer._id }
+                        additionalData: { repoId: repoID, repoName: repo === null || repo === void 0 ? void 0 : repo.name, accessLevel, projectName: project === null || project === void 0 ? void 0 : project.name, layerName: layer === null || layer === void 0 ? void 0 : layer.name, layerId: layer === null || layer === void 0 ? void 0 : layer._id }
                     });
                     yield noti.save();
                     totalCreated++;
@@ -298,7 +302,7 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                     description: `You have been added to a repository.`,
                     recipient: id,
                     from: { name: 'System', ID: projectID },
-                    additionalData: { repoId: repoID, repoName: repo.name, accessLevel, projectName: project.name, layerName: layer.name, layerId: layer._id }
+                    additionalData: { repoId: repoID, repoName: repo === null || repo === void 0 ? void 0 : repo.name, accessLevel, projectName: project === null || project === void 0 ? void 0 : project.name, layerName: layer === null || layer === void 0 ? void 0 : layer.name, layerId: layer === null || layer === void 0 ? void 0 : layer._id }
                 });
                 yield noti.save();
                 totalCreated++;
@@ -351,48 +355,48 @@ const deleteCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0
 exports.deleteCollaborators = deleteCollaborators;
 // ! Collaborator Propper Data Return based on access level
 const getProjectReposDataBaseOnAccess = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const { projectID } = req.params;
-    const uid = req.user._id;
+    const uid = (_a = req === null || req === void 0 ? void 0 : req.user) === null || _a === void 0 ? void 0 : _a._id;
     const { owner, levels, type } = req;
     if (owner && owner === true) {
         return next();
     }
-    console.log('Niveles', levels);
     try {
         if (type === 'collaborator') {
-            console.log('Niveles del collaborator', levels);
             const collaboratorOnRepos = yield collaboratorSchema_1.default.find({ projectID, uid, state: true, 'repository._id': { $exists: true } })
                 .lean()
                 .populate({
                 path: 'repository._id',
                 populate: { path: 'layerID' } // Población en cadena de `layerID` dentro del documento del repositorio.
             });
-            const reposBaseOnLevel = collaboratorOnRepos.map((repo) => {
-                const _a = repo.repository, _b = _a._id, { visibility, gitlabId, gitUrl, webUrl, layerID } = _b, rest = __rest(_b, ["visibility", "gitlabId", "gitUrl", "webUrl", "layerID"]), { accessLevel } = _a;
+            const reposBaseOnLevel = collaboratorOnRepos.map((collaborator) => {
+                const _a = collaborator.repository, _b = _a._id, { visibility, gitlabId, gitUrl, webUrl, layerID } = _b, rest = __rest(_b, ["visibility", "gitlabId", "gitUrl", "webUrl", "layerID"]), { accessLevel } = _a;
                 return Object.assign(Object.assign({}, rest), { visibility, layerID: layerID._id, accessLevel });
             });
             const openRepos = yield repoSchema_1.default.find({ projectID, visibility: 'open' })
                 .populate('layerID')
                 .lean();
-            console.log('openRepos', openRepos);
-            const uniqueOpenReposWithGuestAccess = openRepos.filter(openRepo => !reposBaseOnLevel.some(repo => repo._id.toString() === openRepo._id.toString())).map(repo => {
+            const uniqueOpenReposWithGuestAccess = openRepos
+                .filter((openRepo) => !reposBaseOnLevel.some(repo => repo._id.toString() === openRepo._id.toString()))
+                .map((repo) => {
                 const { layerID: { _id, visibility }, gitUrl, webUrl, gitlabId } = repo, rest = __rest(repo, ["layerID", "gitUrl", "webUrl", "gitlabId"]);
                 if (visibility === 'open') {
                     return Object.assign(Object.assign({}, rest), { layerID: _id, accessLevel: 'guest' });
                 }
-            }).filter(repo => repo !== undefined);
-            console.log('uniqueOpenReposWithGuestAccess', uniqueOpenReposWithGuestAccess);
+                return undefined; // Aquí, si no es open, retornamos undefined. Lo manejaremos después.
+            })
+                .filter((repo) => repo !== undefined);
             req.repos = [...reposBaseOnLevel, ...uniqueOpenReposWithGuestAccess];
             return next();
         }
         else {
-            console.log('Niveles del guest', levels);
             const repos = yield repoSchema_1.default.find({ projectID, visibility: { $in: levels } })
                 .lean()
                 .populate('layerID');
             const reposBaseOnLevel = repos.reduce((acc, repo) => {
                 const { visibility, layerID, gitlabId, gitUrl, webUrl } = repo, rest = __rest(repo, ["visibility", "layerID", "gitlabId", "gitUrl", "webUrl"]);
-                if (visibility && levels.includes(visibility) && levels.includes(layerID.visibility)) {
+                if (visibility && levels && levels.includes(visibility) && levels.includes(layerID.visibility)) {
                     acc.push(Object.assign(Object.assign({}, rest), { visibility, layerID: layerID._id, accessLevel: 'guest' }));
                 }
                 return acc;
@@ -419,39 +423,35 @@ const getLayerReposDataBaseOnAccess = (req, res, next) => __awaiter(void 0, void
     }
     try {
         if (type === 'collaborator') {
-            console.log('Niveles del collaborator', levels);
             const collaboratorOnRepos = yield collaboratorSchema_1.default.find({ projectID, uid, state: true, 'repository._id': { $exists: true } })
                 .lean()
                 .populate({
                 path: 'repository._id',
                 populate: { path: 'layerID' } // Población en cadena de `layerID` dentro del documento del repositorio.
             });
-            const reposBaseOnLevel = collaboratorOnRepos.map((repo) => {
-                const _a = repo.repository, _b = _a._id, { visibility, gitlabId, gitUrl, webUrl, layerID } = _b, rest = __rest(_b, ["visibility", "gitlabId", "gitUrl", "webUrl", "layerID"]), { accessLevel } = _a;
+            const reposBaseOnLevel = collaboratorOnRepos.map((collaborator) => {
+                const _a = collaborator.repository, _b = _a._id, { visibility, gitlabId, gitUrl, webUrl, layerID } = _b, rest = __rest(_b, ["visibility", "gitlabId", "gitUrl", "webUrl", "layerID"]), { accessLevel } = _a;
                 return Object.assign(Object.assign({}, rest), { visibility, layerID: layerID._id, accessLevel });
             });
             const openRepos = yield repoSchema_1.default.find({ projectID, visibility: 'open' })
                 .populate('layerID')
                 .lean();
-            console.log('openRepos', openRepos);
-            const uniqueOpenReposWithGuestAccess = openRepos.filter(openRepo => !reposBaseOnLevel.some(repo => repo._id.toString() === openRepo._id.toString())).map(repo => {
+            const uniqueOpenReposWithGuestAccess = openRepos.filter((openRepo) => !reposBaseOnLevel.some(repo => repo._id.toString() === openRepo._id.toString())).map(repo => {
                 const { layerID: { _id, visibility }, gitUrl, webUrl, gitlabId } = repo, rest = __rest(repo, ["layerID", "gitUrl", "webUrl", "gitlabId"]);
                 if (visibility === 'open') {
                     return Object.assign(Object.assign({}, rest), { layerID: _id, accessLevel: 'guest' });
                 }
-            }).filter(repo => repo !== undefined);
-            console.log('uniqueOpenReposWithGuestAccess', uniqueOpenReposWithGuestAccess);
+            }).filter((repo) => repo !== undefined);
             req.repos = [...reposBaseOnLevel, ...uniqueOpenReposWithGuestAccess];
             return next();
         }
         else {
-            console.log('Niveles del guest', levels);
             const repos = yield repoSchema_1.default.find({ projectID, visibility: { $in: levels } })
                 .lean()
                 .populate('layerID');
             const reposBaseOnLevel = repos.reduce((acc, repo) => {
                 const { visibility, layerID, gitlabId, gitUrl, webUrl } = repo, rest = __rest(repo, ["visibility", "layerID", "gitlabId", "gitUrl", "webUrl"]);
-                if (visibility && levels.includes(visibility) && levels.includes(layerID.visibility)) {
+                if (visibility && levels && levels.includes(visibility) && levels.includes(layerID.visibility)) {
                     acc.push(Object.assign(Object.assign({}, rest), { visibility, layerID: layerID._id, accessLevel: 'guest' }));
                 }
                 return acc;
@@ -469,6 +469,7 @@ const getLayerReposDataBaseOnAccess = (req, res, next) => __awaiter(void 0, void
     }
 });
 exports.getLayerReposDataBaseOnAccess = getLayerReposDataBaseOnAccess;
+// ! Others
 const getCreatedReposDates = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { uid } = req.params;
     const { startDate, endDate } = req.query;

@@ -25,13 +25,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const tasksController = __importStar(require("../controllers/tasks"));
-const DB_validators_1 = require("../middlewares/DB-validators");
-const validateJWT_1 = require("../middlewares/validateJWT");
-const project_middlewares_1 = require("../middlewares/project-middlewares");
-const project_middlewares_2 = require("../middlewares/project-middlewares");
-const commits_middlewares_1 = require("../middlewares/commits-middlewares");
-const tasks_middlewares_1 = require("../middlewares/tasks-middlewares");
-const repository_middlewares_1 = require("../middlewares/repository-middlewares");
+const DB_validators_1 = require("../middlewares/others/DB-validators");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
+const project_middlewares_1 = require("../middlewares/project/project-middlewares");
+const commits_middlewares_1 = require("../middlewares/commit/commits-middlewares");
+const tasks_middlewares_1 = require("../middlewares/tasks/tasks-middlewares");
+const repository_middlewares_1 = require("../middlewares/repository/repository-middlewares");
 const router = (0, express_1.Router)();
 router.get('/:repoID', [
     validateJWT_1.validateJWT,
@@ -43,13 +42,13 @@ router.get('/get-task-notes/:taskId', tasksController.getTaskNotes);
 router.get('/get-task-commits/:taskId', [tasks_middlewares_1.getTaskData, commits_middlewares_1.getCommits], tasksController.getTaskCommits);
 router.get('/get-all-tasks/:id', tasksController.getTasks);
 router.get('/activity/:projectID', [
-    project_middlewares_2.validateProjectExistance,
+    project_middlewares_1.validateProjectExistance,
     project_middlewares_1.validateUserAccessOnProject,
     tasks_middlewares_1.getProjectTasksBaseOnAccessForHeatMap
 ], tasksController.getProyectTasksDataForHeatMap);
 router.get('/activity-data/:projectID', [
     validateJWT_1.validateJWT,
-    project_middlewares_2.validateProjectExistance,
+    project_middlewares_1.validateProjectExistance,
     project_middlewares_1.validateUserAccessOnProject,
     tasks_middlewares_1.getProjectTasksBaseOnAccess
 ], tasksController.getTasksByProject);
@@ -60,13 +59,13 @@ router.get('/get-tasks-for-dashboard/:uid', [validateJWT_1.validateJWT], tasksCo
 router.get('/repo-activity/:repoID', tasksController.getRepoTasksDataForHeatMap);
 router.post('/:projectID/:layerID/:repoID', [
     validateJWT_1.validateJWT,
-    project_middlewares_2.validateProjectExistance,
+    project_middlewares_1.validateProjectExistance,
     repository_middlewares_1.validateRepositoryExistance,
     (0, tasks_middlewares_1.validateCollaboratorAccess)(['coordinator', 'administrator'])
 ], tasksController.createNewTask);
 router.put('/update-task-status/:projectID/:taskId', [
     validateJWT_1.validateJWT,
-    project_middlewares_2.validateProjectExistance,
+    project_middlewares_1.validateProjectExistance,
     (0, tasks_middlewares_1.validateCollaboratorAccess)(['coordinator', 'administrator'])
 ], tasksController.updateTaskStatus);
 router.put('/handle-task-invitation/:taskId', tasksController.handleTaskInvitation);

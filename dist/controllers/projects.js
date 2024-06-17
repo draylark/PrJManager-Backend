@@ -38,14 +38,11 @@ const getProjects = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             .populate('project._id')
             .lean();
         const projectsFromCollaborators = collaboratorProjects.reduce((acc, collaborator) => {
-            // Desestructura para obtener el documento del proyecto poblado y el nivel de acceso directamente.
             const _a = collaborator.project, _b = _a._id, { _id } = _b, rest = __rest(_b, ["_id"]), { accessLevel } = _a;
-            // Verifica si hay contenido relevante para agregar al acumulador.
             if (rest) {
-                // Combina la información del proyecto poblado con el nivel de acceso y lo agrega al acumulador.
-                acc.push(Object.assign(Object.assign({ pid: _id }, rest), { accessLevel }));
+                const data = Object.assign(Object.assign({ pid: _id }, rest), { accessLevel });
+                acc.push(data);
             }
-            // Retorna el acumulador para la siguiente iteración.
             return acc;
         }, []); // Inicia con un array vacío como valor acumulado.
         res.json([...myProjects, ...projectsFromCollaborators]);
@@ -62,9 +59,9 @@ const postProject = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const { project } = req;
     const { readmeContent } = req.body;
     try {
-        const readme = new readmeSchema_1.default({ project: project._id, content: readmeContent });
+        const readme = new readmeSchema_1.default({ project: project === null || project === void 0 ? void 0 : project._id, content: readmeContent });
         yield readme.save();
-        yield projectSchema_1.default.findByIdAndUpdate(project._id, { readme: readme._id }, { new: true });
+        yield projectSchema_1.default.findByIdAndUpdate(project === null || project === void 0 ? void 0 : project._id, { readme: readme._id }, { new: true });
         res.json({
             project,
             message: 'Your project has been created successfully!'
@@ -179,7 +176,7 @@ const getReadme = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const readme = yield readmeSchema_1.default.findById(readmeID);
         res.json({
-            readmeContent: readme.content
+            readmeContent: readme === null || readme === void 0 ? void 0 : readme.content
         });
     }
     catch (error) {

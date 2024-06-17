@@ -93,51 +93,12 @@ const putNoti = async(req: Request, res: Response) => {
 }; 
 
 
-const deleteNoti = async(req: Request, res: Response) => {
-
-
-    try {
-
-        const projectId = req.params.id
-        console.log(projectId)
-
-        const noti = await Noti.findById( projectId )
-
-        
-
-        if(!noti) return res.status(400).json({
-            msg: 'The project dont exist'
-        })
-
-        // Verificar si el usuario autenticado es el creador del proyecto
-        if (noti.owner.toString() !== req.uid ) {
-            return res.status(403).json({ msg: 'User not authorized' });
-        }
-
-
-        const projectDeleted = await Proyect.findByIdAndDelete( projectId )
-
-
-        res.json({
-            projectDeleted
-        });
-
-    } catch (error) {
-        console.log(error)
-    }
-
-
-
-
-}; 
-
 
 
 export {
     postNoti,
     getNotisbyUserId,
     putNoti,
-    deleteNoti
 }
 
 

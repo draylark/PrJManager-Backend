@@ -23,11 +23,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTopUserRepos = exports.getReposByLayer = exports.getReposByProject = exports.addRepoCollaborator = exports.addRepoCollaborators = exports.getRepositoriesByUserId = exports.getRepoCollaborators = exports.updateRepos = exports.deleteRepository = exports.updateRepository = exports.getRepositoryById = exports.getRepositories = exports.createRepository = void 0;
+exports.getTopUserRepos = exports.getReposByLayer = exports.getReposByProject = exports.getRepositoriesByUserId = exports.getRepoCollaborators = exports.updateRepos = exports.deleteRepository = exports.updateRepository = exports.getRepositoryById = exports.getRepositories = exports.createRepository = void 0;
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
 const collaboratorSchema_1 = __importDefault(require("../models/collaboratorSchema"));
 const commitSchema_1 = __importDefault(require("../models/commitSchema"));
-const helpers_middlewares_1 = require("../middlewares/helpers-middlewares");
+const helpers_middlewares_1 = require("../middlewares/others/helpers-middlewares");
 const createRepository = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('llegue hasta createRepository');
     try {
@@ -163,7 +163,8 @@ const updateRepos = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 exports.updateRepos = updateRepos;
 const getRepoCollaborators = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoId } = req.params;
-    const { add, searchQuery = '' } = req.query;
+    const { add } = req.query;
+    const searchQuery = req.query.searchQuery;
     const minAccess = ['editor', 'manager', 'administrator'];
     try {
         if (add) {
@@ -206,72 +207,6 @@ const getRepositoriesByUserId = (req, res) => __awaiter(void 0, void 0, void 0, 
     }
 });
 exports.getRepositoriesByUserId = getRepositoriesByUserId;
-const addRepoCollaborators = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { repoId, collaborators } = req.body;
-    if (!repoId || !collaborators || collaborators.length === 0) {
-        return res.status(200).json({
-            msg: 'No hay colaboradores que agregar'
-        });
-    }
-    try {
-        yield Promise.all(collaborators.map((collaborator) => __awaiter(void 0, void 0, void 0, function* () {
-            const existingCollaborator = yield collaboratorSchema_1.default.findOne({
-                repository: repoId,
-                user: collaborator.id
-            });
-            if (existingCollaborator) {
-                yield collaboratorSchema_1.default.findByIdAndUpdate(existingCollaborator._id, {
-                    accessLevel: collaborator.accessLevel
-                });
-            }
-            else {
-                const newRepoCollaborator = new collaboratorSchema_1.default({
-                    repository: repoId,
-                    user: collaborator.id,
-                    accessLevel: collaborator.accessLevel
-                });
-                yield newRepoCollaborator.save();
-            }
-        })));
-        res.status(200).json({ msg: 'Colaboradores agregados correctamente' });
-    }
-    catch (error) {
-        res.status(500).json({ msg: 'Error al agregar los colaboradores', error });
-    }
-});
-exports.addRepoCollaborators = addRepoCollaborators;
-const addRepoCollaborator = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { uid, project, layer, repository } = req.body;
-    try {
-        // Crear un objeto con la información del colaborador
-        const collaboratorData = {
-            uid
-        };
-        if (project && project._id) {
-            collaboratorData.project = { _id: project._id, accessLevel: project.accessLevel };
-        }
-        // Agregar layer y repository si están presentes y son válidos
-        if (layer && layer._id) {
-            collaboratorData.layer = { _id: layer._id, accessLevel: layer.accessLevel };
-        }
-        if (repository && repository._id) {
-            collaboratorData.repository = { _id: repository._id, accessLevel: repository.accessLevel };
-        }
-        const newCollaborator = new collaboratorSchema_1.default(collaboratorData);
-        yield newCollaborator.save();
-        res.status(200).json({ msg: 'Colaborador agregado correctamente', colaborador: newCollaborator });
-    }
-    catch (error) {
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                msg: 'Error de validación al agregar el colaborador',
-                errores: error.errors
-            });
-        }
-        res.status(500).json({ msg: 'Error al agregar el colaborador', error: error.message });
-    }
-});
-exports.addRepoCollaborator = addRepoCollaborator;
 const getReposByProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const { owner, repos } = req;
@@ -342,11 +277,12 @@ const getTopUserRepos = (req, res) => __awaiter(void 0, void 0, void 0, function
         const commits = yield commitSchema_1.default.find({ 'author.uid': uid, repository: { $in: filteredRepoIds } });
         // Contar la cantidad de commits por repositorio
         const commitCounts = commits.reduce((acc, commit) => {
-            acc[commit.repository] = (acc[commit.repository] || 0) + 1;
+            const repoKey = commit.repository.toString();
+            acc[repoKey] = (acc[repoKey] || 0) + 1;
             return acc;
         }, {});
         // Añadir la cantidad de commits a los repositorios
-        const reposWithCommitCounts = filteredRepos.map(repo => (Object.assign(Object.assign({}, repo), { commitCount: commitCounts[repo._id] || 0 })));
+        const reposWithCommitCounts = filteredRepos.map(repo => (Object.assign(Object.assign({}, repo), { commitCount: commitCounts[repo._id.toString()] || 0 })));
         // Ordenar repositorios por cantidad de commits en orden descendente
         const sortedRepos = reposWithCommitCounts.sort((a, b) => b.commitCount - a.commitCount);
         // Seleccionar los tres primeros repositorios

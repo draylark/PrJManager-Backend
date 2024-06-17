@@ -19,16 +19,16 @@ export const searcher = async(req: Request, res: Response) => {
             switch (type) {
                 case 'profiles':
                     const users = await User.find({ username: { $regex: searchTerm, $options: 'i' } })
-                                            .skip(from)
-                                            .limit(limit)
+                                            .skip(from as number)
+                                            .limit(limit as number)
                                             .select('username _id photoUrl projects');
                                                         
                     return res.json({ results: users });
 
                 case 'projects':
                     const projects = await Project.find({ name: { $regex: searchTerm, $options: 'i' }, visibility: 'public' })
-                                            .skip(from)
-                                            .limit(limit);                                                     
+                                            .skip(from as number)
+                                            .limit(limit as number);                                                     
 
                     return res.json({ results: projects });
                     
@@ -44,8 +44,8 @@ export const searcher = async(req: Request, res: Response) => {
     } 
 
     const users = await User.find({ username: { $regex: searchTerm, $options: 'i' } })
-                            .skip(from)
-                            .limit(limit);
+                            .skip(from as number)
+                            .limit(limit as number);
                  
     if (users.length === 0) {
         return res.status(404).json({ msg: 'No users found' });

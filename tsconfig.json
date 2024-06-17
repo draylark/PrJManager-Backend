@@ -106,5 +106,6 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": false                                 /* Skip type checking all .d.ts files. */
   },
-  "include": ["./**/*.ts", "types.d.ts"]
+  "include": ["./**/*.ts", "types.d.ts"],
+  "typeRoots": ["./express.d.ts"],  // O la ruta donde tienes tu express.d.ts
 }

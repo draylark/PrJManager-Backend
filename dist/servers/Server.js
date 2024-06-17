@@ -28,15 +28,12 @@ class Server {
             proyects: '/api/projects',
             tasks: '/api/tasks',
             notis: '/api/notis',
-            client: '/api/client',
-            event: '/api/event',
             repos: '/api/repos',
             gitlab: '/api/gitlab',
             comments: '/api/comments',
             searcher: '/api/searcher',
             friends: '/api/friends',
             likes: '/api/likes',
-            extension: '/api/extension',
             layer: '/api/layer',
             commits: '/api/commits'
         };
@@ -70,15 +67,12 @@ class Server {
         this.app.use(this.paths.proyects, routes_1.proyectsRouter);
         this.app.use(this.paths.tasks, routes_1.tasksRouter);
         this.app.use(this.paths.notis, routes_1.notisRouter);
-        this.app.use(this.paths.client, routes_1.clientRouter);
-        this.app.use(this.paths.event, routes_1.eventRouter);
         this.app.use(this.paths.repos, routes_1.reposRouter);
         this.app.use(this.paths.gitlab, routes_1.gitlabRouter);
         this.app.use(this.paths.comments, routes_1.commentsRouter);
         this.app.use(this.paths.searcher, routes_1.searcherRouter);
         this.app.use(this.paths.friends, routes_1.friendsRouter);
         this.app.use(this.paths.likes, routes_1.likesRouter);
-        this.app.use(this.paths.extension, routes_1.extensionRouter);
         this.app.use(this.paths.layer, routes_1.layersRouter);
         this.app.use(this.paths.commits, routes_1.commitsRouter);
     }

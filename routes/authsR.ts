@@ -3,10 +3,9 @@ import { usersPostRegistration, usersPostLogin,
          googleSignIn, googlePostLogin, 
          googlePostRegistration, me, extensionController, extensionStartOAuth, extensionAuthUser, createToken, registerNewSession } from '../controllers/auths';
 import { check } from 'express-validator'
-import validarCampos from '../middlewares/validar-campos';
-import { isEmailAlreadyExist } from '../middlewares/validar-db';
-import validateCredentials from '../middlewares/validate-credentials';
-import { validateJWT } from '../middlewares/validateJWT';
+import { fieldValidator, validateCredentials } from '../middlewares/auth/auth-middlewares';
+
+import { validateJWT } from '../middlewares/auth/validateJWT';
 
 const router = Router()
 
@@ -14,7 +13,7 @@ const router = Router()
 router.post('/login', [
     check('email', 'Email is not valid').isEmail(),
     check('password', 'Password is required').not().isEmpty(),
-    validarCampos
+    fieldValidator
 ], usersPostLogin);
 
 
@@ -22,8 +21,7 @@ router.post('/register', [
     check('email', 'Email is not valid').isEmail(),
     check('username', 'Username is Required').not().isEmpty(),
     check('password', 'Passaword needs to have at least 6 characters').isLength({ min: 6 }),
-    check('email').custom( isEmailAlreadyExist ),
-    validarCampos
+    fieldValidator
 ], usersPostRegistration);
 
 
@@ -32,13 +30,13 @@ router.post('/register', [
 
 router.post('/glogin', [
     check('email', 'Email is not valid').isEmail(),
-    validarCampos
+    fieldValidator
 ], googlePostLogin);
 
 router.post('/gregister', [
     check('email', 'Email is not valid').isEmail(),
     check('username', 'Username is Required').not().isEmpty(),
-    validarCampos
+    fieldValidator
 ], googlePostRegistration);
 
 router.post('/google', googleSignIn );
@@ -62,7 +60,7 @@ router.post('/me', validateJWT , me );
 router.post('/extension', [
     check('email', 'Email is not valid').isEmail(),
     check('password', 'Password is required').not().isEmpty(),
-    validarCampos
+    fieldValidator
 ], extensionController );
 
 
@@ -71,7 +69,7 @@ router.post('/extension-oauth', extensionStartOAuth );
 router.post('/extension-auth-user', [
     check('code', 'Code is required').not().isEmpty(),
     validateCredentials,
-    validarCampos
+    fieldValidator
 ],  extensionAuthUser );
 
 

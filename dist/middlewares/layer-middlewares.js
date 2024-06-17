@@ -91,10 +91,11 @@ const validateLayerExistance = (req, res, next) => __awaiter(void 0, void 0, voi
 exports.validateLayerExistance = validateLayerExistance;
 const validateCollaboratorAccessOnLayer = (minAccess) => {
     return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a, _b;
         const { project } = req;
         const { layerID } = req.params;
         const uid = req.query.uid;
-        if (project.owner.toString() === uid) {
+        if ((project === null || project === void 0 ? void 0 : project.owner.toString()) === uid) {
             return next();
         }
         const collaborator = yield collaboratorSchema_1.default.findOne({ uid, 'layer._id': layerID });
@@ -104,7 +105,7 @@ const validateCollaboratorAccessOnLayer = (minAccess) => {
                 message: 'You do not have access to this Layer'
             });
         }
-        if (!minAccess.includes(collaborator.project.accessLevel)) {
+        if (!minAccess.includes((_b = (_a = collaborator === null || collaborator === void 0 ? void 0 : collaborator.project) === null || _a === void 0 ? void 0 : _a.accessLevel) !== null && _b !== void 0 ? _b : 'no-access')) {
             return res.status(400).json({
                 message: 'You do not have the required access level to perform this action'
             });
@@ -203,7 +204,7 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                         title: 'You have been added to a Layer',
                         recipient: id,
                         from: { name: 'System', ID: projectID },
-                        additionalData: { layerId: layerID, layerName: layer.name, projectName: project.name, accessLevel }
+                        additionalData: { layerId: layerID, layerName: layer === null || layer === void 0 ? void 0 : layer.name, projectName: project === null || project === void 0 ? void 0 : project.name, accessLevel }
                     });
                     yield noti.save();
                     totalCreated++;
@@ -219,7 +220,7 @@ const newCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, f
                     title: 'You have been added to a Layer',
                     recipient: id,
                     from: { name: 'System', ID: projectID },
-                    additionalData: { layerId: layerID, layerName: layer.name, projectName: project.name, accessLevel }
+                    additionalData: { layerId: layerID, layerName: layer === null || layer === void 0 ? void 0 : layer.name, projectName: project === null || project === void 0 ? void 0 : project.name, accessLevel }
                 });
                 yield noti.save();
                 totalCreated++;
@@ -247,7 +248,7 @@ exports.newCollaborators = newCollaborators;
 const createOtherCDataOfLayerCreatedCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID, layerID } = req.params;
     const { newCollaborators } = req.body;
-    const { projectRepos } = req;
+    const { projectRepos = [] } = req;
     if (newCollaborators.length === 0) {
         return next();
     }
@@ -316,7 +317,7 @@ exports.updateLayerCollaborators = updateLayerCollaborators;
 const updateOtherCDataOfLayerModifiedCollaborators = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID, layerID } = req.params;
     const { modifiedCollaborators } = req.body;
-    const { projectRepos } = req;
+    const { projectRepos = [] } = req;
     if (modifiedCollaborators.length === 0) {
         return next();
     }
@@ -412,13 +413,15 @@ const updateOtherCDataOfDeletedLayerCollaborators = (req, res, next) => __awaite
                 path: 'repository._id',
                 populate: { path: 'layerID' }
             });
-            yield Promise.all(collaborators.map(collaborator => {
+            yield Promise.all(collaborators.map((collaborator) => {
+                var _a;
                 if (!collaborator.repository) {
                     console.error('Error: repository is null for collaborator', collaborator);
                     return; // Skip this iteration if repository is null
                 }
-                const _a = collaborator.repository._id, { layerID: layer } = _a, rest = __rest(_a, ["layerID"]);
-                if (layer && layer._id.toString() === layerID && collaborator.state === true) {
+                const layer = (_a = collaborator === null || collaborator === void 0 ? void 0 : collaborator.repository._id) === null || _a === void 0 ? void 0 : _a.layerID;
+                // const { _id: { layerID: layer, ...rest } } = collaborator.repository;
+                if (layer._id && layer._id.toString() === layerID && collaborator.state === true) {
                     // Process your update logic here
                     return collaboratorSchema_1.default.updateOne({ uid: id, projectID, 'repository._id': collaborator.repository._id }, { $set: { state: false } });
                 }
@@ -449,25 +452,34 @@ const getProjectLayersDataBaseOnAccess = (req, res, next) => __awaiter(void 0, v
             const collaboratorOnLayers = yield collaboratorSchema_1.default.find({ projectID, uid, state: true, 'layer._id': { $exists: true } })
                 .populate('layer._id')
                 .lean();
+            // ! Layers on which the user is a collaborator
             const layersBaseOnLevel = collaboratorOnLayers.map((collaborator) => {
-                const _a = collaborator.layer, _b = _a._id, { gitlabId } = _b, rest = __rest(_b, ["gitlabId"]), { accessLevel } = _a;
-                return Object.assign(Object.assign({}, rest), { accessLevel });
-            });
+                if (!collaborator.layer || !collaborator.layer._id || typeof collaborator.layer._id === 'string')
+                    return undefined;
+                const { accessLevel } = collaborator.layer;
+                if ('gitlabId' in collaborator.layer._id) {
+                    const _a = collaborator.layer._id, { gitlabId } = _a, rest = __rest(_a, ["gitlabId"]);
+                    return Object.assign(Object.assign({}, rest), { accessLevel }); // Aquí, rest debería contener el resto de las propiedades de Layer_i
+                }
+                return undefined; // O manejar de otra manera si el gitlabId no está presente
+            }).filter((layer) => layer !== undefined); // Usamos un type guard en el filtro para asegurarnos de remover undefined
+            // ! Layers with open visibility    
             const openLayers = yield layerSchema_1.default.find({ project: projectID, visibility: 'open' })
                 .lean();
-            // Paso 4: Filtrar capas 'open' para excluir las ya incluidas en layersBaseOnLevel y asignarles 'guest' como nivel de acceso.
-            const uniqueOpenLayersWithGuestAccess = openLayers.filter(openLayer => !layersBaseOnLevel.some(layer => layer._id.toString() === openLayer._id.toString())).map(layer => {
+            const uniqueOpenLayersWithGuestAccess = openLayers.filter((openLayer) => openLayer._id && !layersBaseOnLevel.some(layer => layer._id && layer._id.toString() === openLayer._id.toString())).map(layer => {
+                if (!layer._id)
+                    return undefined; // Esto nunca debería pasar por el filtro, pero es una precaución adicional.
                 const { gitlabId, __v } = layer, rest = __rest(layer, ["gitlabId", "__v"]);
                 return Object.assign(Object.assign({}, rest), { accessLevel: 'guest' });
-            });
-            // Combinar los dos conjuntos de capas y devolverlos.
+            }).filter((layer) => layer !== undefined);
+            // ! Combine layers
             req.layers = [...layersBaseOnLevel, ...uniqueOpenLayersWithGuestAccess];
             return next();
         }
         else {
             const layers = yield layerSchema_1.default.find({ project: projectID, visibility: { $in: levels } })
                 .lean();
-            const layersWithGuestAccess = layers.map(layer => {
+            const layersWithGuestAccess = layers.map((layer) => {
                 const { gitlabId, __v } = layer, rest = __rest(layer, ["gitlabId", "__v"]);
                 return Object.assign(Object.assign({}, rest), { accessLevel: 'guest' });
             });

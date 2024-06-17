@@ -17,8 +17,6 @@ export const getAllComments = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 0; // Página por defecto es 0
     const limit = parseInt(req.query.limit as string) || 15; // Límite por defecto es 10
 
-    console.log('page', page)
-
     try {
         const totalComments = await Comment.countDocuments({ project: projectId, commentParent: null, state: true });
         const comments = await Comment.find({ project: projectId, commentParent: null, state: true})
@@ -37,7 +35,7 @@ export const getAllComments = async (req: Request, res: Response) => {
 };
 
 
-export const createCommentOrReply = async (req, res) => {
+export const createCommentOrReply = async (req: Request, res: Response) => {
     const { project, content, uid, answering_to, photoUrl } = req.body;
 
     try {
@@ -57,9 +55,10 @@ export const createCommentOrReply = async (req, res) => {
 
             await newComment.save();
             const parentComment = await Comment.findByIdAndUpdate(commentId, { $inc: { replies: 1 } }, { new: true });
-            const newTotalPages = Math.ceil(parentComment.replies / 5);
-
-            await Comment.findByIdAndUpdate(commentId, { $set: { total_pages: newTotalPages } }, { new: true })
+            if(parentComment){
+                const newTotalPages = Math.ceil(parentComment.replies / 5);
+                await Comment.findByIdAndUpdate(commentId, { $set: { total_pages: newTotalPages } }, { new: true })          
+            }
             return res.status(200).json({ message: 'Reply added successfully', newComment, parentComment });
         }
  
@@ -82,8 +81,10 @@ export const createCommentOrReply = async (req, res) => {
 
 export const getCommentReplies = async (req: Request, res: Response) => {
     const { commentId } = req.params;
-    const page = parseInt(req.query.page) || 0;
-    const limit = parseInt(req.query.limit) || 5;
+    const queryPage  = req.query.page as string;
+    const queryLimit = req.query.limit as string;
+    const page = parseInt(queryPage) || 0;
+    const limit = parseInt(queryLimit) || 5;
 
     try {
 
@@ -118,13 +119,14 @@ export const getCommentById = async (req: Request, res: Response) => {
 };
 
 // Update a comment by ID
-export const updateComment = async (req: CommentRequest, res: Response) => {
+export const updateComment = async (req: Request, res: Response) => {
+    const { text } = req.body;
     try {
         const comment = await Comment.findById(req.params.id);
         if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });
         }
-        comment.text = req.body.text;
+        comment.content = text;
         const updatedComment = await comment.save();
         res.json(updatedComment);
     } catch (error) {
@@ -157,7 +159,7 @@ export const likeComment = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Comment not found' });
         }
 
-        comment.likes.length > 0 && type === 'like'
+        comment.likes > 0 && type === 'like'
         ? comment.likes = comment.likes + 1 
         : comment.likes = comment.likes - 1         
 

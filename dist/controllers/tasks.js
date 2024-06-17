@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProfileTasks = exports.handleTaskInvitation = exports.deleteTaskContributor = exports.updateTaskContributors = exports.getTaskContributors = exports.deleteNote = exports.updateNote = exports.getTaskNotes = exports.getTasksForDashboard = exports.getTopProjectsTasks = exports.getUserTasks = exports.sendTaskToRevision = exports.updateTaskStatus = exports.getTasksByProject = exports.getRepoTasksDataForHeatMap = exports.getProyectTasksDataForHeatMap = exports.getTasksByRepo = exports.completeTask = exports.deleteTask = exports.putTask = exports.getTasks = exports.getTaskCommits = exports.getTaskById = exports.createNewTask = void 0;
+exports.getProfileTasks = exports.handleTaskInvitation = exports.deleteTaskContributor = exports.updateTaskContributors = exports.getTaskContributors = exports.deleteNote = exports.updateNote = exports.getTaskNotes = exports.getTasksForDashboard = exports.getTopProjectsTasks = exports.getUserTasks = exports.sendTaskToRevision = exports.updateTaskStatus = exports.getTasksByProject = exports.getRepoTasksDataForHeatMap = exports.getProyectTasksDataForHeatMap = exports.getTasksByRepo = exports.completeTask = exports.putTask = exports.getTasks = exports.getTaskCommits = exports.getTaskById = exports.createNewTask = void 0;
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const taskSchema_1 = __importDefault(require("../models/taskSchema"));
 const notisSchema_1 = __importDefault(require("../models/notisSchema"));
@@ -48,7 +48,7 @@ const createNewTask = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                     date: new Date(),
                     taskName: task.task_name,
                     taskId: task._id,
-                    repositoryName: repo.name
+                    repositoryName: repo === null || repo === void 0 ? void 0 : repo.name
                 }
             });
             yield noti.save();
@@ -126,32 +126,6 @@ const putTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.putTask = putTask;
-const deleteTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const projectId = req.params.id;
-        console.log(projectId);
-        const task = yield projectSchema_1.default.findById(projectId);
-        if (!task)
-            return res.status(400).json({
-                msg: 'The project dont exist'
-            });
-        // Verificar si el usuario autenticado es el creador del proyecto
-        if (task.createdBy.toString() !== req.uid) {
-            return res.status(403).json({ msg: 'User not authorized' });
-        }
-        const projectDeleted = yield projectSchema_1.default.findByIdAndDelete(projectId);
-        res.json({
-            projectDeleted
-        });
-    }
-    catch (error) {
-        res.status(400).json({
-            msg: 'Internal Server error',
-            error
-        });
-    }
-});
-exports.deleteTask = deleteTask;
 const completeTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const _c = req.body, { _id } = _c, rest = __rest(_c, ["_id"]);
@@ -184,7 +158,8 @@ exports.getTasksByRepo = getTasksByRepo;
 const getProyectTasksDataForHeatMap = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
     const { owner, tasks } = req;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
     try {
         if (owner && owner === true) {
             let matchCondition = { project: projectID, status: 'completed' };
@@ -217,7 +192,8 @@ const getProyectTasksDataForHeatMap = (req, res) => __awaiter(void 0, void 0, vo
 exports.getProyectTasksDataForHeatMap = getProyectTasksDataForHeatMap;
 const getRepoTasksDataForHeatMap = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
     try {
         let matchCondition = { repository_related_id: repoID, status: 'completed' };
         if (year) {
@@ -243,7 +219,8 @@ const getRepoTasksDataForHeatMap = (req, res) => __awaiter(void 0, void 0, void 
 exports.getRepoTasksDataForHeatMap = getRepoTasksDataForHeatMap;
 const getTasksByProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectID } = req.params;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
     const { owner, completedTasks, approvalTasks } = req;
     try {
         if (owner && owner === true) {
@@ -417,9 +394,9 @@ const getUserTasks = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 exports.getUserTasks = getUserTasks;
 const getTopProjectsTasks = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { uid } = req.params;
-    const { user: { topProjects } } = req;
-    const projectIds = topProjects.map(project => project._id);
-    if (topProjects.length === 0) {
+    const user = req.user;
+    const projectIds = (user === null || user === void 0 ? void 0 : user.topProjects) ? user === null || user === void 0 ? void 0 : user.topProjects.map(project => project._id) : [];
+    if ((user === null || user === void 0 ? void 0 : user.topProjects) && (user === null || user === void 0 ? void 0 : user.topProjects.length) === 0) {
         return res.status(404).json({
             message: "You haven't set any project as 'Top Project', highlight one in the 'Top Projects' panel to track it.",
             type: 'no-top-projects'
@@ -458,7 +435,8 @@ const getTopProjectsTasks = (req, res) => __awaiter(void 0, void 0, void 0, func
 exports.getTopProjectsTasks = getTopProjectsTasks;
 const getTasksForDashboard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { uid } = req.params;
-    const { startDate, endDate } = req.query;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
     // Crear un objeto de filtro base que incluye el usuario asignado.
     let assignedfilter = { assigned_to: uid, status: 'completed' };
     let contributionsFilter = { contributorsIds: uid, status: 'completed' };
@@ -541,10 +519,10 @@ const deleteNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 });
 exports.deleteNote = deleteNote;
 const getTaskContributors = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { data } = req;
+    const { contributorsCommitsData } = req;
     try {
         res.json({
-            contributorsData: data
+            contributorsData: contributorsCommitsData
         });
     }
     catch (error) {

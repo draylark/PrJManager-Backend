@@ -21,7 +21,7 @@ const createLayer = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const { projectID } = req.params;
     const { name, description, visibility, parent_id = '80502948', creator } = req.body;
     try {
-        const gitlabAccessToken = process.env.IDK;
+        const gitlabAccessToken = process.env.GITLAB_ACCESS_TOKEN;
         const permanentVsibility = 'private';
         const path = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
         const response = yield axios_1.default.post('https://gitlab.com/api/v4/groups', {
@@ -51,12 +51,15 @@ const createLayer = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         res.json({
             newLayer,
             updatedProject,
+            message: 'Layer created successfully'
         });
     }
     catch (error) {
         console.log(error);
         console.log(error.response ? error.response.data : error.message);
-        res.json({ message: error.message });
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
     }
 });
 exports.createLayer = createLayer;
@@ -76,7 +79,7 @@ const getLayersByProjectId = (req, res) => __awaiter(void 0, void 0, void 0, fun
         else {
             return res.status(200).json({
                 msg: 'Layers by Project ID',
-                total: layers.length,
+                total: layers === null || layers === void 0 ? void 0 : layers.length,
                 layers
             });
         }

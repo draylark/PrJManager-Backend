@@ -25,9 +25,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const layerController = __importStar(require("../controllers/layers"));
-const validateJWT_1 = require("../middlewares/validateJWT");
-const project_middlewares_1 = require("../middlewares/project-middlewares");
-const layer_middlewares_1 = require("../middlewares/layer-middlewares");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
+const project_middlewares_1 = require("../middlewares/project/project-middlewares");
+const layer_middlewares_1 = require("../middlewares/layer/layer-middlewares");
 const router = (0, express_1.Router)();
 router.post('/create-layer/:projectID', [
     validateJWT_1.validateJWT,

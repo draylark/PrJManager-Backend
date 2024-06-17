@@ -2,6 +2,15 @@ import Commit from "../models/commitSchema";
 import e, { Request, Response } from "express";
 
 
+type MatchConditions = {
+  project?: string;
+  repository?: string;
+  createdAt?: {
+    $gte: Date;
+    $lte: Date;
+  };
+}
+
 export const getCommitsByRepo = async (req: Request, res: Response) => {
 
     const { repoID } = req.params
@@ -22,9 +31,10 @@ export const getCommitsByRepo = async (req: Request, res: Response) => {
 }
 
 export const getCommitDiff = async (req: Request, res: Response) => {
-  const { repoGitlabID, commit: { hash } } = req;
+  const repoGitlabID = req.repoGitlabID as number
+  const commit = req.commit
 
-  const diffUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/commits/${hash}/diff`;
+  const diffUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/commits/${commit?.hash}/diff`;
   const branchesUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(repoGitlabID)}/repository/branches`;
 
   try {
@@ -48,7 +58,7 @@ export const getCommitDiff = async (req: Request, res: Response) => {
 
       const diffData = await diffResponse.json();
       const branches = await branchesResponse.json();
-      const branchesWithCommit = branches.filter(branch => branch.commit && branch.commit.id === hash);
+      const branchesWithCommit = branches.filter(branch => branch.commit && branch.commit.id === commit?.hash);
 
       // Envía los resultados en la respuesta
       res.json({
@@ -66,12 +76,14 @@ export const getCommitDiff = async (req: Request, res: Response) => {
 export const getProyectCommits = async (req: Request, res: Response) => {
     const { projectID } = req.params;
     const { owner, commits } = req
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year as string;    
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
+
 
     try {
 
       if( owner && owner === true ) {
-        let matchConditions = { project: projectID };
+        let matchConditions: MatchConditions = { project: projectID };
         if( year ){
           matchConditions = {
             ...matchConditions,
@@ -111,11 +123,12 @@ export const getProyectCommits = async (req: Request, res: Response) => {
 
 export const getRepoCommits = async (req: Request, res: Response) => {
     const { repoID } = req.params;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year as string;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
 
     try {
 
-        let matchConditions = { repository: repoID };
+        let matchConditions: MatchConditions = { repository: repoID };
         if( year ){
           matchConditions = {
             ...matchConditions,
@@ -149,8 +162,9 @@ export const getRepoCommits = async (req: Request, res: Response) => {
 
 
 export const getCommitsForDashboard = async (req: Request, res: Response) => {
-
-  const { startDate, endDate, uid } = req.query;
+  const startDate = req.query.startDate as string;
+  const endDate = req.query.endDate as string;
+  const uid = req.params.uid as string;
 
   try {
 

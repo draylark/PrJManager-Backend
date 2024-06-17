@@ -25,11 +25,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const repoController = __importStar(require("../controllers/repos"));
-const validateJWT_1 = require("../middlewares/validateJWT");
-const layer_middlewares_1 = require("../middlewares/layer-middlewares");
-const project_middlewares_1 = require("../middlewares/project-middlewares");
-const collaborators_middlewares_1 = require("../middlewares/collaborators-middlewares");
-const repository_middlewares_1 = require("../middlewares/repository-middlewares");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
+const layer_middlewares_1 = require("../middlewares/layer/layer-middlewares");
+const project_middlewares_1 = require("../middlewares/project/project-middlewares");
+const collaborators_middlewares_1 = require("../middlewares/collaborators/collaborators-middlewares");
+const repository_middlewares_1 = require("../middlewares/repository/repository-middlewares");
 const router = (0, express_1.Router)();
 // CRUD routes
 router.post('/create-repository/:projectID/:layerID', [

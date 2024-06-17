@@ -22,23 +22,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
 const uController = __importStar(require("../controllers/users"));
-const validar_jwt_1 = __importDefault(require("../middlewares/validar-jwt"));
-const validar_roles_1 = require("../middlewares/validar-roles");
 const dvValidators_1 = require("../helpers/dvValidators");
-const project_middlewares_1 = require("../middlewares/project-middlewares");
-const commits_middlewares_1 = require("../middlewares/commits-middlewares");
-const tasks_middlewares_1 = require("../middlewares/tasks-middlewares");
-const layer_middlewares_1 = require("../middlewares/layer-middlewares");
-const repository_middlewares_1 = require("../middlewares/repository-middlewares");
-const helpers_middlewares_1 = require("../middlewares/helpers-middlewares");
-const validateJWT_1 = require("../middlewares/validateJWT");
+const project_middlewares_1 = require("../middlewares/project/project-middlewares");
+const commits_middlewares_1 = require("../middlewares/commit/commits-middlewares");
+const tasks_middlewares_1 = require("../middlewares/tasks/tasks-middlewares");
+const layer_middlewares_1 = require("../middlewares/layer/layer-middlewares");
+const repository_middlewares_1 = require("../middlewares/repository/repository-middlewares");
+const helpers_middlewares_1 = require("../middlewares/others/helpers-middlewares");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
 const router = (0, express_1.Router)();
 router.post('/', uController.getUsers);
 router.get('/find-user', uController.findUsers);
@@ -81,10 +76,8 @@ router.get('/get-friends/:uid', uController.getFriends);
 router.post('/follow-profile', uController.followProfile);
 router.delete('/unfollow-profile/:profileUID', uController.unfollowProfile);
 router.delete('/:id', [
-    validar_jwt_1.default,
     (0, express_validator_1.check)('id', 'No es un ID valido').isMongoId(),
     (0, express_validator_1.check)('id').custom(dvValidators_1.isIdExist),
-    (0, validar_roles_1.showRole)('ADMIN_ROLE', 'VENTAS_ROLE'),
 ], uController.deleteUsers);
 router.put('/update-my-links/:uid', uController.updateMyLinks);
 router.put('/:id', [

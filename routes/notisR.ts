@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import { check } from 'express-validator'
-import { getNotisbyUserId, postNoti, putNoti, deleteNoti } from '../controllers/notis';
-import validarJWT from '../middlewares/validar-jwt';
-import { showRole } from '../middlewares/validar-roles';
+import { getNotisbyUserId, postNoti, putNoti } from '../controllers/notis';
 import { isIdExist } from '../helpers/dvValidators';
 
 
@@ -18,12 +16,7 @@ router.put('/:id', [
     check('id').custom( isIdExist )
 ], putNoti);
 
-router.delete('/:id', [
-    validarJWT,
-    check('id', 'No es un ID valido').isMongoId(),
-    check('id').custom( isIdExist ),
-    showRole('ADMIN_ROLE', 'VENTAS_ROLE'),
-], deleteNoti);
+
 
 
 

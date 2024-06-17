@@ -2,9 +2,20 @@ import { Response, Request } from 'express'
 import Project from '../models/projectSchema';
 import Task from '../models/taskSchema';
 import Noti from '../models/notisSchema';
-import path from 'path';
 import Note from '../models/noteSchema';
+import { TaskBase, PopulatedTaskBaseR, PopulatedTaskBaseRA, User_i } from '../interfaces/interfaces';
+import { Types } from 'mongoose';
 
+type MatchConditions = {
+    project?: string;
+    status?: string | { $in: string[] };
+    repository_related_id?: string;
+    updatedAt?: {
+        $gte: Date;
+        $lte: Date;
+    };
+
+}
 
 
 export const createNewTask = async(req: Request, res: Response) => {
@@ -31,7 +42,7 @@ export const createNewTask = async(req: Request, res: Response) => {
                     date: new Date(),
                     taskName: task.task_name,
                     taskId: task._id,
-                    repositoryName: repo.name
+                    repositoryName: repo?.name
                 }
             })
             await noti.save()
@@ -138,44 +149,6 @@ export const putTask = async(req: Request, res: Response) => {
 }; 
 
 
-export const deleteTask = async(req: Request, res: Response) => {
-
-
-    try {
-
-        const projectId = req.params.id
-        console.log(projectId)
-
-        const task = await Project.findById( projectId )
-
-        
-
-        if(!task) return res.status(400).json({
-            msg: 'The project dont exist'
-        })
-
-        // Verificar si el usuario autenticado es el creador del proyecto
-        if (task.createdBy.toString() !== req.uid ) {
-            return res.status(403).json({ msg: 'User not authorized' });
-        }
-
-
-        const projectDeleted = await Project.findByIdAndDelete( projectId )
-
-
-        res.json({
-            projectDeleted
-        });
-
-    } catch (error) {
-        res.status(400).json({
-            msg: 'Internal Server error',
-            error
-        })
-    }
-
-}; 
-
 
 export const completeTask = async(req: Request, res: Response) => {
 
@@ -224,12 +197,13 @@ export const getTasksByRepo = async(req: Request, res: Response) => {
 export const getProyectTasksDataForHeatMap = async (req: Request, res: Response) => {
     const { projectID } = req.params;
     const { owner, tasks } = req
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year as string;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
 
     try {
 
         if( owner && owner === true ) {
-            let matchCondition = { project: projectID, status: 'completed' };
+            let matchCondition: MatchConditions = { project: projectID, status: 'completed' };
             if (year) {
                 matchCondition = { 
                 ...matchCondition,
@@ -263,11 +237,12 @@ export const getProyectTasksDataForHeatMap = async (req: Request, res: Response)
 
 export const getRepoTasksDataForHeatMap = async (req: Request, res: Response) => {
     const { repoID } = req.params;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year as string;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
 
     try {
 
-            let matchCondition = { repository_related_id: repoID, status: 'completed' };
+            let matchCondition:MatchConditions = { repository_related_id: repoID, status: 'completed' };
             if (year) {
                 matchCondition = { 
                 ...matchCondition,
@@ -296,12 +271,13 @@ export const getRepoTasksDataForHeatMap = async (req: Request, res: Response) =>
 
 export const getTasksByProject = async (req: Request, res: Response) => {
     const { projectID } = req.params;
-    const year = parseInt(req.query.year, 10); // Asegúrate de convertir el año a número
+    const queryYear = req.query.year as string;
+    const year = parseInt(queryYear, 10); // Asegúrate de convertir el año a número
     const { owner, completedTasks, approvalTasks } = req;
 
     try {
         if( owner && owner === true ) {
-            let matchCondition1 = { project: projectID, status: { $in: ['completed', 'approval'] } };
+            let matchCondition1: MatchConditions = { project: projectID, status: { $in: ['completed', 'approval'] } };
             if (year) {
                 matchCondition1 = { 
                 ...matchCondition1,
@@ -349,7 +325,7 @@ export const updateTaskStatus = async(req: Request, res: Response) => {
 
 
     try {
-        const task = await Task.findById( taskId )
+        const task: PopulatedTaskBaseR | null = await Task.findById( taskId )
                             .populate('repository_related_id', 'name')
 
         if(!task) {
@@ -370,7 +346,7 @@ export const updateTaskStatus = async(req: Request, res: Response) => {
                         { $push: { reasons_for_rejection: { $each: formattedReasons } }, status: status, reviewSubmissionDate: null }            
                     );
 
-                    await Promise.all( task.contributorsIds.map( async (contributorId: string) => {
+                    await Promise.all( task.contributorsIds.map( async (contributorId: Types.ObjectId) => {
                         const noti = new Noti({
                             type: 'task-rejected',
                             title: 'Task rejected',
@@ -400,7 +376,7 @@ export const updateTaskStatus = async(req: Request, res: Response) => {
                     await Task.updateOne({ _id: taskId }, { status: status, completed_at: new Date() });
                     await Project.updateOne({ _id: projectID }, { $inc: { completedTasks: 1 } })
                     
-                    await Promise.all( task.contributorsIds.map( async (contributorId: string) => {
+                    await Promise.all( task.contributorsIds.map( async (contributorId: Types.ObjectId) => {
                         const noti = new Noti({
                             type: 'task-approved',
                             title: 'Task approved',
@@ -505,10 +481,10 @@ export const getUserTasks = async(req: Request, res: Response) => {
 
 export const getTopProjectsTasks = async (req: Request, res: Response) => {
     const { uid } = req.params;
-    const { user: { topProjects } } = req
-    const projectIds = topProjects.map( project => project._id );
+    const user = req.user as User_i
+    const projectIds = user?.topProjects ? user?.topProjects.map( project => project._id ) : [];
     
-    if(topProjects.length === 0) {
+    if(user?.topProjects &&  user?.topProjects.length === 0) {
         return res.status(404).json({
             message: "You haven't set any project as 'Top Project', highlight one in the 'Top Projects' panel to track it.",
             type: 'no-top-projects'
@@ -559,7 +535,8 @@ export const getTopProjectsTasks = async (req: Request, res: Response) => {
 
 export const getTasksForDashboard = async (req: Request, res: Response) => {
     const { uid } = req.params;
-    const { startDate, endDate } = req.query;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
 
 
     // Crear un objeto de filtro base que incluye el usuario asignado.
@@ -664,11 +641,11 @@ export const deleteNote = async(req: Request, res: Response) => {
 
 
 export const getTaskContributors = async(req: Request, res: Response) => {
-    const { data } = req
+    const { contributorsCommitsData } = req
 
     try {
         res.json({
-            contributorsData: data
+            contributorsData: contributorsCommitsData
         })
 
     } catch (error) {
@@ -687,7 +664,7 @@ export const updateTaskContributors = async(req: Request, res: Response) => {
     const { contributorsIds } = req.body;
 
     try {
-        const task = await Task.findById(taskId)
+        const task: PopulatedTaskBaseRA | null = await Task.findById(taskId)
                             .select('assigned_to type _id task_name repository_related_id')
                             .populate('assigned_to', 'username photoUrl _id')
                             .populate('repository_related_id', 'name');

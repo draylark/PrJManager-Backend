@@ -1,13 +1,11 @@
 import { Router } from "express";
 import * as prjController from "../controllers/projects";
 import { check } from "express-validator";
-import validarJWT from "../middlewares/validar-jwt";
-import validarCampos from "../middlewares/validar-campos";
 import { isPrIdExist } from "../helpers/dvValidators";
-import { validateJWT } from "../middlewares/validateJWT";
+import { validateJWT } from "../middlewares/auth/validateJWT";
 import { validateProjectExistance,  validateCollaboratorAccessOnProject, newCollaborators, updateCollaborators, deleteCollaborators, 
         updateOtherCollaboratorDataOfDeletedCollaborators, updateOtherCDataOfProjectModifiedCollaborators, createOtherCDataOfProjectCreatedCollaborators, 
-        handlePrJCollaboratorInvitation, itIsTheOwner, validateUserAccessBaseOnProjectVisibility, createProject, validateUserProjects } from '../middlewares/project-middlewares';
+        handlePrJCollaboratorInvitation, itIsTheOwner, validateUserAccessBaseOnProjectVisibility, createProject, validateUserProjects } from '../middlewares/project/project-middlewares';
 
 
 const router = Router()
@@ -59,10 +57,9 @@ router.put('/handle-invitation/:projectID', [
     createOtherCDataOfProjectCreatedCollaborators ],  prjController.prjInvitationCallback)
 
 router.delete('/delete-project/:id',[
-    validarJWT,
     check('id', 'It is not a valid MongoId').isMongoId(),
     check('id').custom( isPrIdExist ),
-    validarCampos ], prjController.deleteProject);
+    ], prjController.deleteProject);
 
 
 export default router

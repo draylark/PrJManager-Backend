@@ -7,11 +7,9 @@ const express_1 = require("express");
 const clients_1 = require("../controllers/clients");
 const express_validator_1 = require("express-validator");
 const validar_campos_1 = __importDefault(require("../middlewares/validar-campos"));
-const validar_jwt_1 = __importDefault(require("../middlewares/validar-jwt"));
 const client_validator_1 = __importDefault(require("../middlewares/client-validator"));
 const router = (0, express_1.Router)();
 router.post('/', [
-    validar_jwt_1.default,
     client_validator_1.default,
     (0, express_validator_1.check)('email', 'Not a valid Email').isEmail(),
     (0, express_validator_1.check)('phoneNumber', 'Not a valid Phone Number').isMobilePhone('any'),

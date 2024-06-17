@@ -34,7 +34,7 @@ const findUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         let queryConditions = [{ username: { $regex: search, $options: 'i' } }];
         // Intentar agregar la condición de búsqueda por ID si 'search' es un ID válido
-        if (search.match(/^[0-9a-fA-F]{24}$/)) {
+        if (search && search.match(/^[0-9a-fA-F]{24}$/)) {
             queryConditions.push({ _id: search });
         }
         const users = yield userSchema_1.default.find({ $or: queryConditions });
@@ -327,7 +327,7 @@ const unfollowProfile = (req, res) => __awaiter(void 0, void 0, void 0, function
                 $inc: { friends: -1 }
             });
             return res.json({
-                friendshipRef: friendshipRef._id,
+                friendshipRef: friendshipRef === null || friendshipRef === void 0 ? void 0 : friendshipRef._id,
                 type: 'friendship',
                 success: true,
                 message: 'Profile unfollowed successfully'

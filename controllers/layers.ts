@@ -11,7 +11,7 @@ export const createLayer = async (req: Request, res: Response) => {
 
     try {
   
-        const gitlabAccessToken = process.env.IDK
+        const gitlabAccessToken = process.env.GITLAB_ACCESS_TOKEN
         const permanentVsibility = 'private'
   
         const path = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
@@ -50,12 +50,15 @@ export const createLayer = async (req: Request, res: Response) => {
         res.json({ 
           newLayer,
           updatedProject,
+          message: 'Layer created successfully'
         });
   
     } catch (error) {
         console.log(error)
         console.log(error.response ? error.response.data : error.message);
-        res.json({ message: error.message });
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
     }
 };
 
@@ -80,7 +83,7 @@ export const getLayersByProjectId = async (req: Request, res: Response) => {
         } else {
             return res.status(200).json({
                 msg: 'Layers by Project ID',
-                total: layers.length,
+                total: layers?.length,
                 layers
             });
         }
@@ -183,8 +186,9 @@ export const response = async(req: Request, res: Response) => {
         totalDeletedCollaborators
     } = req;
 
-    let messageParts = []; // Para acumular partes del mensaje basado en las operaciones realizadas
+    let messageParts: string[] = []; // Para acumular partes del mensaje basado en las operaciones realizadas
 
+    
     // Crear mensajes según el estado de cada operación
     if (deletingMiddlewareState) {
         messageParts.push(`${totalDeletedCollaborators} collaborator(s) deleted.`);

@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.login = void 0;
-const SocketServer_1 = require("../servers/SocketServer");
+const SocketServer_1 = require("../../servers/SocketServer");
 const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.body;
     const io = (0, SocketServer_1.getSocket)();

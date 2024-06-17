@@ -23,8 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteNoti = exports.putNoti = exports.getNotisbyUserId = exports.postNoti = void 0;
-const projectSchema_1 = __importDefault(require("../models/projectSchema"));
+exports.putNoti = exports.getNotisbyUserId = exports.postNoti = void 0;
 const notisSchema_1 = __importDefault(require("../models/notisSchema"));
 const postNoti = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { title, description, by, to } = req.body;
@@ -96,27 +95,4 @@ const putNoti = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.putNoti = putNoti;
-const deleteNoti = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const projectId = req.params.id;
-        console.log(projectId);
-        const noti = yield notisSchema_1.default.findById(projectId);
-        if (!noti)
-            return res.status(400).json({
-                msg: 'The project dont exist'
-            });
-        // Verificar si el usuario autenticado es el creador del proyecto
-        if (noti.owner.toString() !== req.uid) {
-            return res.status(403).json({ msg: 'User not authorized' });
-        }
-        const projectDeleted = yield projectSchema_1.default.findByIdAndDelete(projectId);
-        res.json({
-            projectDeleted
-        });
-    }
-    catch (error) {
-        console.log(error);
-    }
-});
-exports.deleteNoti = deleteNoti;
 //# sourceMappingURL=notis.js.map

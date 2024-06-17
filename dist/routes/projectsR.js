@@ -22,18 +22,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const prjController = __importStar(require("../controllers/projects"));
 const express_validator_1 = require("express-validator");
-const validar_jwt_1 = __importDefault(require("../middlewares/validar-jwt"));
-const validar_campos_1 = __importDefault(require("../middlewares/validar-campos"));
 const dvValidators_1 = require("../helpers/dvValidators");
-const validateJWT_1 = require("../middlewares/validateJWT");
-const project_middlewares_1 = require("../middlewares/project-middlewares");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
+const project_middlewares_1 = require("../middlewares/project/project-middlewares");
 const router = (0, express_1.Router)();
 router.post('/create-project', [
     validateJWT_1.validateJWT,
@@ -74,10 +69,8 @@ router.put('/handle-invitation/:projectID', [
     project_middlewares_1.createOtherCDataOfProjectCreatedCollaborators
 ], prjController.prjInvitationCallback);
 router.delete('/delete-project/:id', [
-    validar_jwt_1.default,
     (0, express_validator_1.check)('id', 'It is not a valid MongoId').isMongoId(),
     (0, express_validator_1.check)('id').custom(dvValidators_1.isPrIdExist),
-    validar_campos_1.default
 ], prjController.deleteProject);
 exports.default = router;
 //# sourceMappingURL=projectsR.js.map

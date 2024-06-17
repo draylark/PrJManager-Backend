@@ -1,10 +1,10 @@
 import express from 'express';
 import * as gitController from '../controllers/gitlab';
 import { loadContentFile } from '../controllers/gitlab';
-import { validateRepositoryExistance } from '../middlewares/DB-validators';
-import { validateJWT } from '../middlewares/validateJWT';
+import { validateRepositoryExistance } from '../middlewares/others/DB-validators';
+import { validateJWT } from '../middlewares/auth/validateJWT';
 import multer from 'multer';
-import { getCommitsHashes } from '../middlewares/commits-middlewares';
+import { getCommitsHashes } from '../middlewares/commit/commits-middlewares';
 const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();

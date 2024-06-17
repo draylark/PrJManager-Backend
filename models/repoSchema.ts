@@ -49,7 +49,7 @@ const repoSchema = new Schema({
   },
   commits: {
     type: Number,
-    required: true,
+    default: 0,
   },
   creator: {
     type: Schema.Types.ObjectId,

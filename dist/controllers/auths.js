@@ -301,7 +301,7 @@ exports.extensionAuthUser = extensionAuthUser;
 const createToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { uid } = req.body;
     try {
-        const token = yield (0, generateJWT_1.generateJWT)(uid);
+        const token = yield (0, generateJWT_1.generateJWT)(uid, true);
         res.json({
             status: true,
             token

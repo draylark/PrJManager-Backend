@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import * as layerController from '../controllers/layers';
-import { validateJWT } from '../middlewares/validateJWT';
-import { validateProjectExistance, validateUserAccessOnProject, validateCollaboratorAccessOnProject } from '../middlewares/project-middlewares';
+import { validateJWT } from '../middlewares/auth/validateJWT';
+import { validateProjectExistance, validateUserAccessOnProject, validateCollaboratorAccessOnProject } from '../middlewares/project/project-middlewares';
 import { updateLayerCollaborators, validateLayerExistance, validateCollaboratorAccessOnLayer, 
     verifyProjectLevelAccessOfNewCollaborator, deleteCollaborators, newCollaborators, createOtherCDataOfLayerCreatedCollaborators,
-         updateOtherCDataOfLayerModifiedCollaborators, updateOtherCDataOfDeletedLayerCollaborators, getProjectLayersDataBaseOnAccess, verifyProjectLayers } from '../middlewares/layer-middlewares';
+         updateOtherCDataOfLayerModifiedCollaborators, updateOtherCDataOfDeletedLayerCollaborators, getProjectLayersDataBaseOnAccess, verifyProjectLayers } from '../middlewares/layer/layer-middlewares';
 
 
 

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateVisibility = exports.handleAndOrganizeProjectData = exports.handleAndOrganizeData = void 0;
 const handleAndOrganizeData = (req, res, next) => {
-    const { createdProjects, createdLayers, createdRepos, commits, tasks } = req;
+    const { createdProjects, createdLayers, createdRepos, commitsData, tasksData } = req;
     let allEvents = [];
     try {
         // Añadir proyectos creados
@@ -30,14 +30,14 @@ const handleAndOrganizeData = (req, res, next) => {
             });
         });
         // Añadir commits
-        commits.commits1.forEach(commit => {
+        commitsData.commits1.forEach(commit => {
             allEvents.push({
                 type: 'commit',
                 date: commit.createdAt,
                 data: commit,
             });
         });
-        commits.commits2.forEach(commit => {
+        commitsData.commits2.forEach(commit => {
             allEvents.push({
                 type: 'commit_with_task',
                 date: commit.createdAt,
@@ -45,42 +45,42 @@ const handleAndOrganizeData = (req, res, next) => {
             });
         });
         // Añadir tareas
-        tasks.taskSet0.forEach(task => {
+        tasksData.taskSet0.forEach(task => {
             allEvents.push({
                 type: 'task_created',
                 date: task.createdAt,
                 data: task,
             });
         });
-        tasks.tasksSet1.forEach(task => {
+        tasksData.tasksSet1.forEach(task => {
             allEvents.push({
                 type: 'task_review_submission',
                 date: task.reviewSubmissionDate,
                 data: task,
             });
         });
-        tasks.tasksSet2.forEach(task => {
+        tasksData.tasksSet2.forEach(task => {
             allEvents.push({
                 type: 'task_completed',
                 date: task.completed_at,
                 data: task,
             });
         });
-        tasks.tasksSet3.forEach(task => {
+        tasksData.tasksSet3.forEach(task => {
             allEvents.push({
                 type: 'task_contributor_review_submission',
                 date: task.reviewSubmissionDate,
                 data: task,
             });
         });
-        tasks.tasksSet4.forEach(task => {
+        tasksData.tasksSet4.forEach(task => {
             allEvents.push({
                 type: 'task_contributor_completed',
                 date: task.completed_at,
                 data: task,
             });
         });
-        tasks.tasksSet5.forEach(task => {
+        tasksData.tasksSet5.forEach(task => {
             allEvents.push({
                 type: 'task_contributor_marked_ready',
                 date: task.readyContributorData.date,
@@ -101,7 +101,7 @@ const handleAndOrganizeData = (req, res, next) => {
 };
 exports.handleAndOrganizeData = handleAndOrganizeData;
 const handleAndOrganizeProjectData = (req, res, next) => {
-    const { createdLayers, createdRepos, commits, tasks } = req;
+    const { createdLayers, createdRepos, commitsData, tasksData } = req;
     // Combinar todos los datos en un solo array
     let allEvents = [];
     try {
@@ -122,14 +122,14 @@ const handleAndOrganizeProjectData = (req, res, next) => {
             });
         });
         // Añadir commits
-        commits.commits1.forEach(commit => {
+        commitsData.commits1.forEach(commit => {
             allEvents.push({
                 type: 'commit',
                 date: commit.createdAt,
                 data: commit,
             });
         });
-        commits.commits2.forEach(commit => {
+        commitsData.commits2.forEach(commit => {
             allEvents.push({
                 type: 'commit_with_task',
                 date: commit.createdAt,
@@ -137,42 +137,42 @@ const handleAndOrganizeProjectData = (req, res, next) => {
             });
         });
         // Añadir tareas
-        tasks.taskSet0.forEach(task => {
+        tasksData.taskSet0.forEach(task => {
             allEvents.push({
                 type: 'task_created',
                 date: task.createdAt,
                 data: task,
             });
         });
-        tasks.tasksSet1.forEach(task => {
+        tasksData.tasksSet1.forEach(task => {
             allEvents.push({
                 type: 'task_review_submission',
                 date: task.reviewSubmissionDate,
                 data: task,
             });
         });
-        tasks.tasksSet2.forEach(task => {
+        tasksData.tasksSet2.forEach(task => {
             allEvents.push({
                 type: 'task_completed',
                 date: task.completed_at,
                 data: task,
             });
         });
-        tasks.tasksSet3.forEach(task => {
+        tasksData.tasksSet3.forEach(task => {
             allEvents.push({
                 type: 'task_contributor_review_submission',
                 date: task.reviewSubmissionDate,
                 data: task,
             });
         });
-        tasks.tasksSet4.forEach(task => {
+        tasksData.tasksSet4.forEach(task => {
             allEvents.push({
                 type: 'task_contributor_completed',
                 date: task.completed_at,
                 data: task,
             });
         });
-        tasks.tasksSet5.forEach(task => {
+        tasksData.tasksSet5.forEach(task => {
             allEvents.push({
                 type: 'task_contributor_marked_ready',
                 date: task.completed_at,

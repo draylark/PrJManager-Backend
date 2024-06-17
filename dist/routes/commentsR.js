@@ -25,7 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const commentController = __importStar(require("../controllers/comments"));
-const validateJWT_1 = require("../middlewares/validateJWT");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
 const router = (0, express_1.Router)();
 router.post('/create-comment', commentController.createCommentOrReply);
 // router.get( '/get-comments/:projectId', commentController.getAllComments  );

@@ -24,11 +24,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const validateJWT_1 = require("../middlewares/validateJWT");
+const validateJWT_1 = require("../middlewares/auth/validateJWT");
 const commitsController = __importStar(require("../controllers/commits"));
-const DB_validators_1 = require("../middlewares/DB-validators");
-const commits_middlewares_1 = require("../middlewares/commits-middlewares");
-const project_middlewares_1 = require("../middlewares/project-middlewares");
+const DB_validators_1 = require("../middlewares/others/DB-validators");
+const commits_middlewares_1 = require("../middlewares/commit/commits-middlewares");
+const project_middlewares_1 = require("../middlewares/project/project-middlewares");
 const router = (0, express_1.Router)();
 router.get('/:repoID', commitsController.getCommitsByRepo);
 router.get('/:repoID/diff/:hash', [

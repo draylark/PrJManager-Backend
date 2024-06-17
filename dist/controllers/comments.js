@@ -19,7 +19,6 @@ const getAllComments = (req, res) => __awaiter(void 0, void 0, void 0, function*
     const { projectId } = req.params;
     const page = parseInt(req.query.page) || 0; // Página por defecto es 0
     const limit = parseInt(req.query.limit) || 15; // Límite por defecto es 10
-    console.log('page', page);
     try {
         const totalComments = yield commentSchema_1.default.countDocuments({ project: projectId, commentParent: null, state: true });
         const comments = yield commentSchema_1.default.find({ project: projectId, commentParent: null, state: true })
@@ -53,8 +52,10 @@ const createCommentOrReply = (req, res) => __awaiter(void 0, void 0, void 0, fun
             const commentId = comment.commentParent ? comment.commentParent : answering_to;
             yield newComment.save();
             const parentComment = yield commentSchema_1.default.findByIdAndUpdate(commentId, { $inc: { replies: 1 } }, { new: true });
-            const newTotalPages = Math.ceil(parentComment.replies / 5);
-            yield commentSchema_1.default.findByIdAndUpdate(commentId, { $set: { total_pages: newTotalPages } }, { new: true });
+            if (parentComment) {
+                const newTotalPages = Math.ceil(parentComment.replies / 5);
+                yield commentSchema_1.default.findByIdAndUpdate(commentId, { $set: { total_pages: newTotalPages } }, { new: true });
+            }
             return res.status(200).json({ message: 'Reply added successfully', newComment, parentComment });
         }
         const newComment = new commentSchema_1.default({
@@ -75,8 +76,10 @@ const createCommentOrReply = (req, res) => __awaiter(void 0, void 0, void 0, fun
 exports.createCommentOrReply = createCommentOrReply;
 const getCommentReplies = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { commentId } = req.params;
-    const page = parseInt(req.query.page) || 0;
-    const limit = parseInt(req.query.limit) || 5;
+    const queryPage = req.query.page;
+    const queryLimit = req.query.limit;
+    const page = parseInt(queryPage) || 0;
+    const limit = parseInt(queryLimit) || 5;
     try {
         const totalReplies = yield commentSchema_1.default.countDocuments({ commentParent: commentId, state: true });
         const replies = yield commentSchema_1.default.find({ commentParent: commentId, state: true })
@@ -110,12 +113,13 @@ const getCommentById = (req, res) => __awaiter(void 0, void 0, void 0, function*
 exports.getCommentById = getCommentById;
 // Update a comment by ID
 const updateComment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { text } = req.body;
     try {
         const comment = yield commentSchema_1.default.findById(req.params.id);
         if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });
         }
-        comment.text = req.body.text;
+        comment.content = text;
         const updatedComment = yield comment.save();
         res.json(updatedComment);
     }
@@ -145,7 +149,7 @@ const likeComment = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });
         }
-        comment.likes.length > 0 && type === 'like'
+        comment.likes > 0 && type === 'like'
             ? comment.likes = comment.likes + 1
             : comment.likes = comment.likes - 1;
         yield comment.save();

@@ -17,8 +17,6 @@ const axios_1 = __importDefault(require("axios"));
 const layerSchema_1 = __importDefault(require("../models/layerSchema"));
 const projectSchema_1 = __importDefault(require("../models/projectSchema"));
 const repoSchema_1 = __importDefault(require("../models/repoSchema"));
-const util_1 = require("util");
-const execAsync = (0, util_1.promisify)(require('child_process').exec);
 const getAllGroups = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.params;
     try {
@@ -163,7 +161,8 @@ const loadRepoFiles = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 exports.loadRepoFiles = loadRepoFiles;
 const loadContentFile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoGitlabID } = req;
-    const { filePath, branch } = req.query;
+    const filePath = req.query.filePath;
+    const branch = req.query.branch;
     console.log('branch en el backend', branch);
     if (!repoGitlabID) {
         return res.status(400).json({
@@ -196,7 +195,7 @@ const loadContentFile = (req, res) => __awaiter(void 0, void 0, void 0, function
 exports.loadContentFile = loadContentFile;
 const loadFolderContents = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoGitlabID } = req;
-    const { folderPath } = req.query; // Ruta de la carpeta
+    const folderPath = req.query.folderPath;
     if (!repoGitlabID) {
         return res.status(400).json({
             message: 'No se encontró el repositorio'

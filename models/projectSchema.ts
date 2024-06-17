@@ -56,13 +56,11 @@ const ProjectSchema = new Schema({
       type: Number,
       default: 0
     },
-
     readme: {
       type: Schema.Types.ObjectId,
       ref: 'Readme',
       default: null
     },
-
     owner: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -70,7 +68,6 @@ const ProjectSchema = new Schema({
     },
 
   }, { timestamps: true });
-
 
 
 ProjectSchema.methods.toJSON = function(){
