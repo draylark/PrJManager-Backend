@@ -16,11 +16,11 @@ exports.updateLike = exports.newLike = exports.getLikes = void 0;
 const likeSchema_1 = __importDefault(require("../models/likeSchema"));
 const commentSchema_1 = __importDefault(require("../models/commentSchema"));
 const getLikes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { commentId, uid } = req.params;
+    const { commentId } = req.params;
     try {
-        const like = yield likeSchema_1.default.findOne({ commentId, uid, isLike: true });
+        const likes = yield likeSchema_1.default.find({ commentId, isLike: true });
         res.json({
-            like: like || null // Devuelve el like encontrado o null si no hay coincidencia
+            likes: likes
         });
     }
     catch (error) {
@@ -45,7 +45,7 @@ const newLike = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             const updateLikeOperation = { $set: { isLike } };
             const likeUpdated = yield likeSchema_1.default.findOneAndUpdate({ commentId, uid }, updateLikeOperation, { new: true });
             return res.json({
-                likeUpdated,
+                savedLike: likeUpdated,
                 comment
             });
         }

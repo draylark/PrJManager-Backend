@@ -1,6 +1,11 @@
 import { Types } from 'mongoose'; // Importa Types de Mongoose para ObjectId
 import { Commit4Props } from '../types/types';
 
+
+
+
+// ! PROJECT
+
 export interface Project_i {
   _id?: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
   name: string;
@@ -23,8 +28,6 @@ export interface Project_i {
 };
 
 
-
-
 // ! LAYER
 
 export interface Layer_i {
@@ -42,11 +45,9 @@ export interface Layer_i {
   createdAt?: Date; // Opcional, agregado por timestamps
   updatedAt?: Date; // Opcional, agregado por timestamps
 };
-
 export interface ExtendedLayer_i extends Omit<Layer_i, 'gitlabId'> {
   accessLevel: "contributor" | "coordinator" | "manager" | "administrator";
 };
-
 export interface GuestLayer_i extends Omit<Layer_i, 'gitlabId'> {
   accessLevel: 'guest';
 };
@@ -76,48 +77,24 @@ export interface Repository_i {
   updatedAt?: Date; // Opcional, agregado por timestamps
 };
 
-export interface PopulatedRepository_l extends  Omit<Repository_i, 'layerID'> {
+
+export interface PopulatedRepository_l extends Omit<Repository_i, 'layerID'> {
   layerID: Layer_i;
 };
-export interface PopulatedRepositoryBase2 extends  Omit<Repository_i, 'layerID' | 'projectID'> {
+export interface PopulatedRepositoryBase2 extends Omit<Repository_i, 'layerID' | 'projectID'> {
   projectID: Project_i;  
   layerID: Layer_i;
 };
-
 export interface ExtendedRepository_i extends Omit<Repository_i, 'gitlabId' | 'webUrl' | 'gitUrl'> {
   accessLevel: string
-}
-
+};
 export interface GuestRepository_i extends Omit<Repository_i, 'gitlabId' | 'webUrl' | 'gitUrl'> {
   accessLevel: 'guest';
-}
+};
 
 
 
 // ! TASK
-
-interface ReasonForRejection {
-  uid: Types.ObjectId | User_i;
-  text: string;
-  date: Date;
-  taskSubmissionDate?: Date | null;
-};
-interface PopulatedReasonForRejection {
-  uid: Pick<User_i, '_id' | 'username' | 'photoUrl'>;
-  text: string;
-  date: Date;
-  taskSubmissionDate?: Date | null;
-};
-interface ReadyContributor {
-  uid: Types.ObjectId | User_i;
-  date: Date;
-  me: boolean;
-};
-interface PopulatedContributor {
-  uid: Pick<User_i, '_id' | 'username' | 'photoUrl'>;
-  date: Date;
-  me: boolean;
-};
 
 export interface TaskBase {
   _id: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
@@ -149,8 +126,30 @@ export interface TaskBase {
   creator: Types.ObjectId;
   createdAt: Date; // Opcional, agregado por timestamps
   updatedAt: Date; // Opcional, agregado por timestamps
-}
+};
 
+interface ReasonForRejection {
+  uid: Types.ObjectId | User_i;
+  text: string;
+  date: Date;
+  taskSubmissionDate?: Date | null;
+};
+interface PopulatedReasonForRejection {
+  uid: Pick<User_i, '_id' | 'username' | 'photoUrl'>;
+  text: string;
+  date: Date;
+  taskSubmissionDate?: Date | null;
+};
+interface ReadyContributor {
+  uid: Types.ObjectId | User_i;
+  date: Date;
+  me: boolean;
+};
+interface PopulatedContributor {
+  uid: Pick<User_i, '_id' | 'username' | 'photoUrl'>;
+  date: Date;
+  me: boolean;
+};
 
 export interface PopulatedTaskBase extends Omit<TaskBase, 'project' | 'layer_related_id' | 'repository_related_id' | 'readyContributors' | 'reasons_for_rejection'> {
   project: Project_i;
@@ -176,8 +175,6 @@ export interface PopulatedTask3 extends Omit<TaskBase, 'layer_related_id' | 'rep
   repository_related_id: Repository_i;
 };
 
-
-
 export interface PPCompletedOrApprovalTaskBase extends Omit<TaskBase, 'status' | 'layer_related_id' | 'repository_related_id'> {
   status: 'completed' | 'approval';
   layer_related_id: Layer_i;
@@ -202,13 +199,11 @@ export interface TaskSet5 extends Pick<TaskBase, 'completed_at' | 'task_name' | 
 
 export interface TaskWithReadyContributors extends Omit<TaskSet5, 'readyContributors'> {
   readyContributorData?: ReadyContributor | {};
-}
-
+};
 
 export interface PopulatedRepoTaskBase extends Omit<TaskBase, 'repository_related_id'> {
   repository_related_id: Pick<Repository_i, 'name'>;
-}
-
+};
 export interface TasksData {
   taskSet0: Pick<PopulatedRepoTaskBase, 'createdAt' | 'task_name' | 'assigned_to' | '_id' | 'repository_related_id'>[]
   tasksSet1: Pick<PopulatedRepoTaskBase, 'reviewSubmissionDate' | 'task_name' | 'assigned_to' | '_id' | 'repository_related_id'>[];
@@ -216,7 +211,7 @@ export interface TasksData {
   tasksSet3: Pick<PopulatedRepoTaskBase, 'reviewSubmissionDate' | 'task_name' | 'assigned_to' | '_id' | 'repository_related_id'>[];
   tasksSet4: Pick<PopulatedRepoTaskBase, 'completed_at' | 'task_name' | 'assigned_to' | '_id' | 'repository_related_id'>[];
   tasksSet5: TaskWithReadyContributors[]; 
-}
+};
 
 
 
@@ -331,11 +326,6 @@ export interface Collaborator_i {
   photoUrl?: string; // Opcional, ya que tiene un valor por defecto
   state?: boolean; // Opcional, ya que tiene un valor por defecto
 };
-
-
-
-
-
 export interface C_On_Project {
   _id?: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
   project: {
@@ -349,7 +339,6 @@ export interface C_On_Project {
   photoUrl?: string; // Opcional, ya que tiene un valor por defecto
   state?: boolean; // Opcional, ya que tiene un valor por defecto
 };
-
 export interface C_On_Layer {
   _id?: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
   layer: {
@@ -363,8 +352,6 @@ export interface C_On_Layer {
   photoUrl?: string; // Opcional, ya que tiene un valor por defecto
   state?: boolean; // Opcional, ya que tiene un valor por defecto
 };
-
-
 export interface C_On_Repository {
   _id?: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
   repository: {
@@ -387,9 +374,29 @@ export interface cOnRepoData_i {
 
 
 
+// ! OTHERS
 
-
-
+export interface User_i {
+  _id: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
+  username?: string;
+  email?: string;
+  password?: string;
+  photoUrl?: string; // Opcional, ya que tiene un valor por defecto
+  state?: boolean; // Opcional, ya que tiene un valor por defecto
+  createdAt?: Date; // Opcional, agregado por timestamps
+  updatedAt?: Date; // Opcional, agregado por timestamps
+  google?: boolean;
+  website?: string; // Opcional, ya que tiene un valor por defecto
+  github?: string; // Opcional, ya que tiene un valor por defecto
+  twitter?: string; // Opcional, ya que tiene un valor por defecto
+  linkedin?: string; // Opcional, ya que tiene un valor por defecto
+  projects?: number; // Opcional, ya que tiene un valor por defecto
+  followers?: number; // Opcional, ya que tiene un valor por defecto
+  following?: number; // Opcional, ya que tiene un valor por defecto
+  friends?: number; // Opcional, ya que tiene un valor por defecto
+  topProjects?: Types.ObjectId[]; // Opcional, ya que tiene un valor por defecto
+  personalAccessToken?: string; // Opcional, ya que tiene un valor por defecto
+};
 
 export interface Follower_i {
   _id?: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
@@ -400,8 +407,7 @@ export interface Follower_i {
   followedAt?: Date; // Opcional, ya que tiene un valor por defecto
   createdAt?: Date; // Opcional, agregado por timestamps
   updatedAt?: Date; // Opcional, agregado por timestamps
-}
-
+};
 
 export interface Friendship_i {
   _id?: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
@@ -409,8 +415,7 @@ export interface Friendship_i {
   active?: boolean; // Opcional, ya que tiene un valor por defecto
   createdAt?: Date; // Opcional, agregado por timestamps
   updatedAt?: Date; // Opcional, agregado por timestamps
-}
-
+};
 
 export interface Noti_i {
   _id?: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
@@ -438,32 +443,7 @@ export interface Noti_i {
   additionalData?: any; // Opcional, ya que tiene un valor por defecto
   createdAt?: Date; // Opcional, agregado por timestamps
   updatedAt?: Date; // Opcional, agregado por timestamps
-}
-
-export interface User_i {
-  _id: Types.ObjectId; // Opcional si Mongoose lo genera automáticamente
-  username?: string;
-  email?: string;
-  password?: string;
-  photoUrl?: string; // Opcional, ya que tiene un valor por defecto
-  state?: boolean; // Opcional, ya que tiene un valor por defecto
-  createdAt?: Date; // Opcional, agregado por timestamps
-  updatedAt?: Date; // Opcional, agregado por timestamps
-  google?: boolean;
-  website?: string; // Opcional, ya que tiene un valor por defecto
-  github?: string; // Opcional, ya que tiene un valor por defecto
-  twitter?: string; // Opcional, ya que tiene un valor por defecto
-  linkedin?: string; // Opcional, ya que tiene un valor por defecto
-  projects?: number; // Opcional, ya que tiene un valor por defecto
-  followers?: number; // Opcional, ya que tiene un valor por defecto
-  following?: number; // Opcional, ya que tiene un valor por defecto
-  friends?: number; // Opcional, ya que tiene un valor por defecto
-  topProjects?: Types.ObjectId[]; // Opcional, ya que tiene un valor por defecto
-  personalAccessToken?: string; // Opcional, ya que tiene un valor por defecto
-}
-
-
-
+};
 
 export interface gitlab_repo_i {
   id: number;
@@ -599,11 +579,10 @@ export interface gitlab_repo_i {
   requirements_access_level: string;
   security_and_compliance_enabled: boolean;
   compliance_frameworks: any[]; // Define mejor este tipo si es necesario
-}
-
+};
 
 export interface EventBase {
   type: string;
   date: Date | null | undefined;
   data: any;
-}
+};

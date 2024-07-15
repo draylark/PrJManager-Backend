@@ -146,13 +146,18 @@ const completeTask = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 exports.completeTask = completeTask;
 const getTasksByRepo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
-    console.log('repoID', repoID);
-    const tasks = yield taskSchema_1.default.find({ repository_related_id: repoID });
-    // console.log(tasks)
-    // console.log(repoID)
-    res.json({
-        tasks
-    });
+    try {
+        const tasks = yield taskSchema_1.default.find({ repository_related_id: repoID })
+            .populate('contributorsIds');
+        res.json({
+            tasks
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            message: 'Internal Server error.'
+        });
+    }
 });
 exports.getTasksByRepo = getTasksByRepo;
 const getProyectTasksDataForHeatMap = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -203,7 +208,6 @@ const getRepoTasksDataForHeatMap = (req, res) => __awaiter(void 0, void 0, void 
                 } });
         }
         const tasks = yield taskSchema_1.default.find(matchCondition)
-            .select('-hash')
             .sort({ createdAt: -1 });
         return res.json({
             tasks
@@ -232,7 +236,11 @@ const getTasksByProject = (req, res) => __awaiter(void 0, void 0, void 0, functi
                     } });
             }
             const tasks = yield taskSchema_1.default.find(matchCondition1)
-                .sort({ createdAt: -1 });
+                .sort({ createdAt: -1 })
+                .populate({
+                path: 'contributorsIds',
+                select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+            });
             const completedTasks = tasks.filter(task => task.status === 'completed');
             const approvalTasks = tasks.filter(task => task.status === 'approval');
             return res.json({
@@ -402,17 +410,62 @@ const getTopProjectsTasks = (req, res) => __awaiter(void 0, void 0, void 0, func
             type: 'no-top-projects'
         });
     }
+    // .sort({ createdAt: -1 })
+    // .populate({
+    //     path: 'project',
+    //     select: '_id name description startDate endDate tags' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+    // .populate({
+    //     path: 'layer_related_id',
+    //     select: '_id name description updatedAt project' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+    // .populate({
+    //     path: 'repository_related_id',
+    //     select: '_id name description layerID' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+    // .populate({
+    //     path: 'contributorsIds',
+    //     select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+    // .sort({ createdAt: -1 })
+    // .populate('layer_related_id repository_related_id project')
+    // .populate({
+    //     path: 'contributorsIds',
+    //     select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
     try {
         const tasks = yield taskSchema_1.default.find({ assigned_to: uid, project: { $in: projectIds } })
             .sort({ createdAt: -1 })
-            .populate('layer_related_id repository_related_id project')
+            .populate({
+            path: 'project',
+            select: '_id name description startDate endDate tags' // Incluye solo 'name' y 'email', excluye '_id'
+        })
+            .populate({
+            path: 'layer_related_id',
+            select: '_id name description updatedAt project' // Incluye solo 'name' y 'email', excluye '_id'
+        })
+            .populate({
+            path: 'repository_related_id',
+            select: '_id name description layerID' // Incluye solo 'name' y 'email', excluye '_id'
+        })
             .populate({
             path: 'contributorsIds',
             select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
         });
         const contributions = yield taskSchema_1.default.find({ contributorsIds: uid, project: { $in: projectIds } })
             .sort({ createdAt: -1 })
-            .populate('layer_related_id repository_related_id project')
+            .populate({
+            path: 'project',
+            select: '_id name description startDate endDate tags' // Incluye solo 'name' y 'email', excluye '_id'
+        })
+            .populate({
+            path: 'layer_related_id',
+            select: '_id name description updatedAt project' // Incluye solo 'name' y 'email', excluye '_id'
+        })
+            .populate({
+            path: 'repository_related_id',
+            select: '_id name description layerID' // Incluye solo 'name' y 'email', excluye '_id'
+        })
             .populate({
             path: 'contributorsIds',
             select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
@@ -442,21 +495,21 @@ const getTasksForDashboard = (req, res) => __awaiter(void 0, void 0, void 0, fun
     let contributionsFilter = { contributorsIds: uid, status: 'completed' };
     // Añadir filtros de fecha si se proporcionan ambos startDate y endDate.
     if (startDate && endDate) {
-        assignedfilter['updatedAt'] = {
+        assignedfilter['completed_at'] = {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         };
-        contributionsFilter['updatedAt'] = {
+        contributionsFilter['completed_at'] = {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         };
     }
     const tasks = yield taskSchema_1.default.find(assignedfilter)
         .sort({ updatedAt: -1 })
-        .select('_id task_name updatedAt');
+        .select('_id task_name completed_at');
     const contributions = yield taskSchema_1.default.find(contributionsFilter)
         .sort({ updatedAt: -1 })
-        .select('_id task_name updatedAt');
+        .select('_id task_name completed_at');
     const combinedTasks = [...tasks, ...contributions];
     const uniqueTasks = combinedTasks.filter((task, index, self) => self.findIndex(t => t._id.toString() === task._id.toString()) === index);
     res.json({

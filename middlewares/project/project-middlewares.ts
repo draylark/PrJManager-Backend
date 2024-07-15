@@ -497,7 +497,7 @@ export const handlePrJCollaboratorInvitation = async( req: Request, res: Respons
             error: error.message
         });
     }
-}
+};
 
 
 

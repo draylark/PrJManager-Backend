@@ -23,7 +23,11 @@ const getAllComments = (req, res) => __awaiter(void 0, void 0, void 0, function*
         const totalComments = yield commentSchema_1.default.countDocuments({ project: projectId, commentParent: null, state: true });
         const comments = yield commentSchema_1.default.find({ project: projectId, commentParent: null, state: true })
             .skip(page * limit)
-            .limit(limit);
+            .limit(limit)
+            .populate({
+            path: 'createdBy',
+            select: 'username photoUrl'
+        });
         res.json({
             total_comments: totalComments,
             current_page: page + 1,
@@ -84,7 +88,11 @@ const getCommentReplies = (req, res) => __awaiter(void 0, void 0, void 0, functi
         const totalReplies = yield commentSchema_1.default.countDocuments({ commentParent: commentId, state: true });
         const replies = yield commentSchema_1.default.find({ commentParent: commentId, state: true })
             .skip(page * limit)
-            .limit(limit);
+            .limit(limit)
+            .populate({
+            path: 'createdBy',
+            select: 'username photoUrl'
+        });
         res.json({
             totalReplies,
             current_page: page + 1,

@@ -33,7 +33,7 @@ type MatchConditions = {
     completed_at?: {
         $gte: Date,
         $lte: Date
-    }
+    } | { $ne: null },
 };
 
 
@@ -652,10 +652,10 @@ export const getTasksDates = async(req: Request, res: Response, next: NextFuncti
 
     // ? Tarea en la que se es contribuidor y terminaste tus contribuiciones
     const tasksSet5: TaskQueryResult[] = await Task.find({
-    assigned_to: { $ne: uid },
-    me: true,
-    contributorsIds: uid,
-    readyContributors: { $elemMatch: { uid, date: { $gte: startDate, $lte: endDate } } }
+        assigned_to: { $ne: uid },
+        // me: true,
+        contributorsIds: uid,
+        readyContributors: { $elemMatch: { uid, me: true, date: { $gte: startDate, $lte: endDate } } }
     })
     .sort({ updatedAt: -1 })
     .select('completed_at task_name assigned_to _id repository_related_id readyContributors')
@@ -678,7 +678,6 @@ export const getTasksDates = async(req: Request, res: Response, next: NextFuncti
           readyContributorData: matchedContributor ? matchedContributor : {}
         };
       });
-
   
       // Puedes adjuntar los conjuntos de tareas a la solicitud para usarlos más adelante si es necesario
       req.tasksData = { taskSet0, tasksSet1, tasksSet2, tasksSet3, tasksSet4, tasksSet5: filteredTasksSet5 };
@@ -814,22 +813,27 @@ export const getProfileTasksFiltered = async( req: Request, res: Response, next:
     const { uid } = req.params;
     const { year } = req.query;
 
-    let matchCondition: MatchConditions = { assigned_to: uid };
-        if (year) {
-            matchCondition = { 
+    let matchCondition: any = {
+        assigned_to: uid,
+        status: 'completed',
+        completed_at: { $ne: null }  // Asegura que completed_at no sea null
+    };
+    
+    if (year) {
+        matchCondition = {
             ...matchCondition,
-            completed_at: {
-                $gte: new Date(`${year}-01-01T00:00:00.000Z`),
-                $lte: new Date(`${year}-12-31T23:59:59.999Z`)
-            }
-            };
-        }
+            $and: [  // Combina condiciones para mantener ambas restricciones
+                { completed_at: { $gte: new Date(`${year}-01-01T00:00:00.000Z`) } },
+                { completed_at: { $lte: new Date(`${year}-12-31T23:59:59.999Z`) } }
+            ]
+        };
+    }
 
 
     try {
         const tasks: PopulatedTask3[] = await Task.find( matchCondition )
         .sort({ updatedAt: -1 })
-        .select('createdAt task_name assigned_to _id project layer_related_id repository_related_id')
+        .select('completed_at task_name assigned_to _id project layer_related_id repository_related_id')
         .populate('repository_related_id', 'visibility name')
         .populate('layer_related_id', 'visibility name')
         .populate('project', 'visibility name')

@@ -21,7 +21,11 @@ export const getAllComments = async (req: Request, res: Response) => {
         const totalComments = await Comment.countDocuments({ project: projectId, commentParent: null, state: true });
         const comments = await Comment.find({ project: projectId, commentParent: null, state: true})
                                       .skip( page * limit )
-                                      .limit(limit);
+                                      .limit(limit)
+                                      .populate({
+                                        path: 'createdBy',
+                                        select: 'username photoUrl'
+                                      })
 
         res.json({
             total_comments: totalComments,
@@ -90,9 +94,13 @@ export const getCommentReplies = async (req: Request, res: Response) => {
 
         const totalReplies = await Comment.countDocuments({ commentParent: commentId, state: true });
         const replies = await Comment.find({ commentParent: commentId, state: true})
-                                     .skip( page * limit )
-                                     .limit(limit);
-        
+                                    .skip( page * limit )
+                                    .limit(limit)
+                                    .populate({
+                                        path: 'createdBy',
+                                        select: 'username photoUrl'
+                                    })
+            
         res.json({
             totalReplies,
             current_page: page + 1,

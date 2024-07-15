@@ -154,7 +154,7 @@ export const getLayerCollaborators = async (req: Request, res: Response) => {
         const collaborators = await Collaborator.find({ "layer._id" : layerID, state: true });
 
         if( !collaborators ) return res.status(404).json({
-            msg: 'This layer has no collaborators yet',
+            message: 'This layer has no collaborators yet',
             collaborators: []
         });
 

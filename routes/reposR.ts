@@ -23,7 +23,7 @@ router.post('/create-repository/:projectID/:layerID', [
 router.post('/updateRepos', repoController.updateRepos);
 
 
-router.get('/:id', [ ],  repoController.getRepositoryById);
+router.get('/:id', repoController.getRepositoryById);
 router.get('/getAllRepos/:userId', repoController.getRepositoriesByUserId);
 router.get('/get-repo-collaborators/:repoId', repoController.getRepoCollaborators);
 router.get('/get-layer-repos/:projectID/:layerID', [validateJWT, validateProjectExistance, validateUserAccessOnProject, getLayerReposDataBaseOnAccess ], repoController.getReposByLayer )

@@ -28,6 +28,6 @@ const likesController = __importStar(require("../controllers/likes"));
 const router = (0, express_1.Router)();
 router.post('/:commentId', likesController.newLike);
 router.put('/:commentId', likesController.updateLike);
-router.get('/:commentId/:uid', likesController.getLikes);
+router.get('/:commentId', likesController.getLikes);
 exports.default = router;
 //# sourceMappingURL=likesR.js.map

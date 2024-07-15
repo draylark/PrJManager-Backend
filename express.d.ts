@@ -51,7 +51,7 @@ declare global {
             hash2?: string | null;
             gitlabId?: number;
             task?: TaskBase | PopulatedTaskBase;
-            commits?: Commit_i[] | PopulatedCommit3_i[] | PopulatedCommit5_i[] | [];
+            commits?: Commit_i[] | PopulatedCommit3_i[] | PopulatedCommit5_i[] | Pick<Commit_i, 'uuid' | 'createdAt' | 'author'>[] | [];
             commit?: Commit_i ;
             commitsLength?: number;
             commitsData?: {

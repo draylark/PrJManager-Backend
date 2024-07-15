@@ -59,8 +59,7 @@ router.put('/collaborators/:projectID', [
     project_middlewares_1.updateOtherCollaboratorDataOfDeletedCollaborators,
     project_middlewares_1.updateCollaborators,
     project_middlewares_1.updateOtherCDataOfProjectModifiedCollaborators,
-    project_middlewares_1.newCollaborators,
-    project_middlewares_1.createOtherCDataOfProjectCreatedCollaborators
+    project_middlewares_1.newCollaborators
 ], prjController.response);
 router.put('/handle-invitation/:projectID', [
     validateJWT_1.validateJWT,

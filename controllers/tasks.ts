@@ -91,7 +91,6 @@ export const getTaskById = async(req: Request, res: Response) => {
 
 
 export const getTaskCommits = async(req: Request, res: Response) => {
-
     const { task, commits } = req
 
 
@@ -179,17 +178,19 @@ export const getTasksByRepo = async(req: Request, res: Response) => {
 
     const { repoID } = req.params
 
-    console.log('repoID',repoID)
+    try {
+        const tasks = await Task.find({ repository_related_id: repoID })
+                            .populate('contributorsIds')
 
-    const tasks = await Task.find({ repository_related_id: repoID});
-    // console.log(tasks)
-    // console.log(repoID)
+        res.json({
+            tasks
+        });     
 
-    res.json({
-        tasks
-    });
-
-
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal Server error.'
+        })
+    }
 }
 
 
@@ -254,7 +255,6 @@ export const getRepoTasksDataForHeatMap = async (req: Request, res: Response) =>
             }
        
             const tasks = await Task.find(matchCondition)
-                    .select('-hash')
                     .sort({ createdAt: -1 });
                     
             return res.json({
@@ -289,7 +289,11 @@ export const getTasksByProject = async (req: Request, res: Response) => {
             }
 
             const tasks = await Task.find(matchCondition1)
-                    .sort({ createdAt: -1 });
+                    .sort({ createdAt: -1 })
+                    .populate({
+                        path: 'contributorsIds',
+                        select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
 
 
             const completedTasks = tasks.filter(task => task.status === 'completed');
@@ -492,24 +496,75 @@ export const getTopProjectsTasks = async (req: Request, res: Response) => {
     }
 
 
+    // .sort({ createdAt: -1 })
+    // .populate({
+    //     path: 'project',
+    //     select: '_id name description startDate endDate tags' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+    // .populate({
+    //     path: 'layer_related_id',
+    //     select: '_id name description updatedAt project' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+    // .populate({
+    //     path: 'repository_related_id',
+    //     select: '_id name description layerID' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+    // .populate({
+    //     path: 'contributorsIds',
+    //     select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+
+
+    // .sort({ createdAt: -1 })
+    // .populate('layer_related_id repository_related_id project')
+    // .populate({
+    //     path: 'contributorsIds',
+    //     select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+    // })
+
     try {
         const tasks = await Task.find({ assigned_to: uid, project: { $in: projectIds }})
-            .sort({ createdAt: -1 })
-            .populate('layer_related_id repository_related_id project')
-            .populate({
-                path: 'contributorsIds',
-                select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
-            });
+                    .sort({ createdAt: -1 })
+                    .populate({
+                        path: 'project',
+                        select: '_id name description startDate endDate tags' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+                    .populate({
+                        path: 'layer_related_id',
+                        select: '_id name description updatedAt project' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+                    .populate({
+                        path: 'repository_related_id',
+                        select: '_id name description layerID' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+                    .populate({
+                        path: 'contributorsIds',
+                        select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+
+                    
 
 
 
         const contributions = await Task.find({ contributorsIds: uid, project: { $in: projectIds } })
-            .sort({ createdAt: -1 })
-            .populate('layer_related_id repository_related_id project')
-            .populate({
-                path: 'contributorsIds',
-                select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
-            });
+                    .sort({ createdAt: -1 })
+                    .populate({
+                        path: 'project',
+                        select: '_id name description startDate endDate tags' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+                    .populate({
+                        path: 'layer_related_id',
+                        select: '_id name description updatedAt project' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+                    .populate({
+                        path: 'repository_related_id',
+                        select: '_id name description layerID' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+                    .populate({
+                        path: 'contributorsIds',
+                        select: '_id username photoUrl' // Incluye solo 'name' y 'email', excluye '_id'
+                    })
+
 
         // Combina las tareas y contribuciones
         const combinedTasks = [...tasks, ...contributions];
@@ -545,12 +600,12 @@ export const getTasksForDashboard = async (req: Request, res: Response) => {
 
     // Añadir filtros de fecha si se proporcionan ambos startDate y endDate.
     if (startDate && endDate) {
-        assignedfilter['updatedAt'] = {
+        assignedfilter['completed_at'] = {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         };
 
-        contributionsFilter['updatedAt'] = {
+        contributionsFilter['completed_at'] = {
             $gte: new Date(startDate),
             $lte: new Date(endDate)
         };
@@ -558,11 +613,11 @@ export const getTasksForDashboard = async (req: Request, res: Response) => {
 
     const tasks = await Task.find(assignedfilter)
         .sort({ updatedAt: -1 })
-        .select('_id task_name updatedAt')
+        .select('_id task_name completed_at')
 
     const contributions = await Task.find(contributionsFilter)
         .sort({ updatedAt: -1 })
-        .select('_id task_name updatedAt')
+        .select('_id task_name completed_at')
 
 
     const combinedTasks = [...tasks, ...contributions];

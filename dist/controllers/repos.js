@@ -42,7 +42,6 @@ const createRepository = (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.createRepository = createRepository;
-// READ
 const getRepositories = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.json({
         message: 'Hola'
@@ -73,7 +72,6 @@ const getRepositoryById = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.getRepositoryById = getRepositoryById;
-// UPDATE
 const updateRepository = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { repoID } = req.params;
     const { creatingMiddlewareState, updatingMiddlewareState, deletingMiddlewareState } = req;
@@ -105,7 +103,6 @@ const updateRepository = (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.updateRepository = updateRepository;
-// DELETE
 const deleteRepository = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const repository = yield repoSchema_1.default.findByIdAndDelete(req.params.id);
@@ -174,7 +171,6 @@ const getRepoCollaborators = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 'repository.accessLevel': { $in: minAccess },
                 state: true
             }).select('uid name photoUrl');
-            console.log('collaborators', collaborators);
             res.status(200).json({
                 collaborators
             });

@@ -5,11 +5,11 @@ import Comment from '../models/commentSchema';
 
 
 export const getLikes = async (req: Request, res: Response) => {
-    const { commentId, uid } = req.params;
+    const { commentId } = req.params;
     try {
-        const like = await Like.findOne({ commentId, uid, isLike: true });
+        const likes = await Like.find({ commentId, isLike: true });
         res.json({
-            like: like || null // Devuelve el like encontrado o null si no hay coincidencia
+            likes: likes
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -20,6 +20,7 @@ export const newLike = async (req: Request, res: Response) => {
     const { uid, isLike } = req.body;
     const { commentId } = req.params;
 
+    
     try {
         if (typeof isLike !== 'boolean') {
             return res.status(400).json({ message: 'Invalid value' });
@@ -39,7 +40,7 @@ export const newLike = async (req: Request, res: Response) => {
             const likeUpdated = await Like.findOneAndUpdate({ commentId, uid }, updateLikeOperation, { new: true });
 
             return res.json({
-                likeUpdated,
+                savedLike: likeUpdated,
                 comment
             });
 

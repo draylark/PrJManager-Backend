@@ -139,7 +139,7 @@ const getLayerCollaborators = (req, res) => __awaiter(void 0, void 0, void 0, fu
         const collaborators = yield collaboratorSchema_1.default.find({ "layer._id": layerID, state: true });
         if (!collaborators)
             return res.status(404).json({
-                msg: 'This layer has no collaborators yet',
+                message: 'This layer has no collaborators yet',
                 collaborators: []
             });
         res.status(200).json({

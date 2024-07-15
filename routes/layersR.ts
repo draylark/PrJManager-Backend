@@ -23,7 +23,6 @@ router.get('/get-layer/:layerID', [
 
 
 
-
 router.get('/get-layers/:projectID', [
     validateProjectExistance,
     validateUserAccessOnProject,

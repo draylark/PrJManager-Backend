@@ -508,9 +508,9 @@ const getTasksDates = (req, res, next) => __awaiter(void 0, void 0, void 0, func
         // ? Tarea en la que se es contribuidor y terminaste tus contribuiciones
         const tasksSet5 = yield taskSchema_1.default.find({
             assigned_to: { $ne: uid },
-            me: true,
+            // me: true,
             contributorsIds: uid,
-            readyContributors: { $elemMatch: { uid, date: { $gte: startDate, $lte: endDate } } }
+            readyContributors: { $elemMatch: { uid, me: true, date: { $gte: startDate, $lte: endDate } } }
         })
             .sort({ updatedAt: -1 })
             .select('completed_at task_name assigned_to _id repository_related_id readyContributors')
@@ -641,17 +641,21 @@ exports.getProjectTasksDates = getProjectTasksDates;
 const getProfileTasksFiltered = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { uid } = req.params;
     const { year } = req.query;
-    let matchCondition = { assigned_to: uid };
+    let matchCondition = {
+        assigned_to: uid,
+        status: 'completed',
+        completed_at: { $ne: null } // Asegura que completed_at no sea null
+    };
     if (year) {
-        matchCondition = Object.assign(Object.assign({}, matchCondition), { completed_at: {
-                $gte: new Date(`${year}-01-01T00:00:00.000Z`),
-                $lte: new Date(`${year}-12-31T23:59:59.999Z`)
-            } });
+        matchCondition = Object.assign(Object.assign({}, matchCondition), { $and: [
+                { completed_at: { $gte: new Date(`${year}-01-01T00:00:00.000Z`) } },
+                { completed_at: { $lte: new Date(`${year}-12-31T23:59:59.999Z`) } }
+            ] });
     }
     try {
         const tasks = yield taskSchema_1.default.find(matchCondition)
             .sort({ updatedAt: -1 })
-            .select('createdAt task_name assigned_to _id project layer_related_id repository_related_id')
+            .select('completed_at task_name assigned_to _id project layer_related_id repository_related_id')
             .populate('repository_related_id', 'visibility name')
             .populate('layer_related_id', 'visibility name')
             .populate('project', 'visibility name');

@@ -174,7 +174,7 @@ export const getCommits = async(req: Request, res: Response, next: NextFunction)
     }
 
     try {
-        const commits: Commit_i[] = await Commit.find({ uuid: { $in: task.commits_hashes } })
+        const commits: Pick<Commit_i, 'uuid' | 'createdAt' | 'author'>[] = await Commit.find({ uuid: { $in: task.commits_hashes } })
                                     .select('uuid createdAt author')
                                     .sort({ createdAt: -1 })
                                     .lean();

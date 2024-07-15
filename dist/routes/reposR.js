@@ -43,7 +43,7 @@ router.post('/create-repository/:projectID/:layerID', [
     collaborators_middlewares_1.addNewRepoCollaborators
 ], repoController.createRepository);
 router.post('/updateRepos', repoController.updateRepos);
-router.get('/:id', [], repoController.getRepositoryById);
+router.get('/:id', repoController.getRepositoryById);
 router.get('/getAllRepos/:userId', repoController.getRepositoriesByUserId);
 router.get('/get-repo-collaborators/:repoId', repoController.getRepoCollaborators);
 router.get('/get-layer-repos/:projectID/:layerID', [validateJWT_1.validateJWT, project_middlewares_1.validateProjectExistance, project_middlewares_1.validateUserAccessOnProject, repository_middlewares_1.getLayerReposDataBaseOnAccess], repoController.getReposByLayer);

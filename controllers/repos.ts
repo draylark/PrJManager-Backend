@@ -20,7 +20,6 @@ export const createRepository = async (req: Request, res: Response) => {
     }
 };
 
-// READ
 export const getRepositories = async (req: Request, res: Response) => {
     res.json({
         message: 'Hola'
@@ -32,7 +31,6 @@ export const getRepositories = async (req: Request, res: Response) => {
     //     res.status(500).json({ message: error.message });
     // }
 };
-
 
 export const getRepositoryById = async (req: Request, res: Response) => {
     try {
@@ -50,8 +48,6 @@ export const getRepositoryById = async (req: Request, res: Response) => {
     }
 };
 
-
-// UPDATE
 export const updateRepository = async (req: Request, res: Response) => {
     const { repoID } = req.params;
     const { creatingMiddlewareState, updatingMiddlewareState, deletingMiddlewareState} = req
@@ -83,7 +79,6 @@ export const updateRepository = async (req: Request, res: Response) => {
     }
 };
 
-// DELETE
 export const deleteRepository = async (req: Request, res: Response) => {
     try {
         const repository = await Repo.findByIdAndDelete(req.params.id);
@@ -96,7 +91,6 @@ export const deleteRepository = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 
 export const updateRepos = async (req: Request, res: Response) => {
 
@@ -143,8 +137,7 @@ export const updateRepos = async (req: Request, res: Response) => {
     } catch (error) {
         res.status(500).json({ msg: 'Error al actualizar los repositorios', error });
     }
-}
-
+};
 
 export const getRepoCollaborators = async (req: Request, res: Response) => {
     const { repoId } = req.params;
@@ -162,8 +155,6 @@ export const getRepoCollaborators = async (req: Request, res: Response) => {
                 state: true
               }).select('uid name photoUrl');
 
-            console.log('collaborators',collaborators)
-
             res.status(200).json({
                 collaborators
             });
@@ -177,8 +168,7 @@ export const getRepoCollaborators = async (req: Request, res: Response) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-}
-
+};
 
 export const getRepositoriesByUserId = async (req: Request, res: Response) => {
     
@@ -195,10 +185,6 @@ export const getRepositoriesByUserId = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
-
-
-
-
 
 export const getReposByProject = async (req: Request, res: Response) => {
     const { projectID } = req.params;
@@ -225,7 +211,6 @@ export const getReposByProject = async (req: Request, res: Response) => {
     }
 
 };
-
 
 export const getReposByLayer = async (req: Request, res: Response) => {
 
@@ -255,8 +240,7 @@ export const getReposByLayer = async (req: Request, res: Response) => {
         });
     }
 
-}
-
+};
 
 export const getTopUserRepos = async(req: Request, res: Response) => {
 
